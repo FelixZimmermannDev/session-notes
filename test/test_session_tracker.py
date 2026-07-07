@@ -82,3 +82,38 @@ def test_update_note_for_date_reuses_existing_session():
     assert session is existing_session
     assert existing_session.note == "Updated existing note"
     assert tracker.get_sessions() == [existing_session]
+
+
+def test_log_session_creates_coded_session_with_note():
+    tracker = SessionTracker()
+
+    session = tracker.log_session("2026-07-07", True, "Built backend feature")
+
+    assert session.get_date() == "2026-07-07"
+    assert session.is_coded() is True
+    assert session.note == "Built backend feature"
+    assert tracker.get_sessions() == [session]
+
+
+def test_log_session_creates_not_coded_session_with_note():
+    tracker = SessionTracker()
+
+    session = tracker.log_session("2026-07-07", False, "Rest day")
+
+    assert session.get_date() == "2026-07-07"
+    assert session.is_coded() is False
+    assert session.note == "Rest day"
+    assert tracker.get_sessions() == [session]
+
+
+def test_log_session_reuses_existing_session():
+    tracker = SessionTracker()
+    existing_session = CodingSession("2026-07-07")
+    tracker.add_session(existing_session)
+
+    session = tracker.log_session("2026-07-07", True, "Updated through log_session")
+
+    assert session is existing_session
+    assert existing_session.is_coded() is True
+    assert existing_session.note == "Updated through log_session"
+    assert tracker.get_sessions() == [existing_session]
