@@ -1,11 +1,11 @@
-from backend.coding_session import CodingSession
+from backend.coding_session import CodingSession, SessionStatus
 
 
 def test_new_session_stores_date_and_starts_unset_with_empty_note():
     session = CodingSession("2026-07-08")
 
     assert session.get_date() == "2026-07-08"
-    assert session.get_status() == "unset"
+    assert session.get_status() == SessionStatus.UNSET
     assert session.get_note() == ""
     assert session.is_unset() is True
     assert session.is_coded() is False
@@ -17,7 +17,7 @@ def test_mark_coded_sets_status_to_coded():
 
     session.mark_coded()
 
-    assert session.get_status() == "coded"
+    assert session.get_status() == SessionStatus.CODED
     assert session.is_coded() is True
     assert session.is_uncoded() is False
     assert session.is_unset() is False
@@ -28,7 +28,7 @@ def test_mark_uncoded_sets_status_to_uncoded():
 
     session.mark_uncoded()
 
-    assert session.get_status() == "uncoded"
+    assert session.get_status() == SessionStatus.UNCODED
     assert session.is_uncoded() is True
     assert session.is_coded() is False
     assert session.is_unset() is False
@@ -40,7 +40,7 @@ def test_mark_uncoded_can_override_coded_status():
 
     session.mark_uncoded()
 
-    assert session.get_status() == "uncoded"
+    assert session.get_status() == SessionStatus.UNCODED
     assert session.is_uncoded() is True
 
 
