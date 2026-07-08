@@ -60,8 +60,14 @@ QPushButton#saveNoteButton {
     color: white;
 }
 
-QPushButton#settingsButton {
+QPushButton#settingsButton, QPushButton#windowControlButton {
     background-color: #3a404c;
+    color: white;
+    padding: 6px;
+}
+
+QPushButton#closeButton {
+    background-color: #4b2630;
     color: white;
     padding: 6px;
 }
@@ -149,8 +155,14 @@ QPushButton#saveNoteButton {
     color: white;
 }
 
-QPushButton#settingsButton {
+QPushButton#settingsButton, QPushButton#windowControlButton {
     background-color: #e4e4e7;
+    color: #18181b;
+    padding: 6px;
+}
+
+QPushButton#closeButton {
+    background-color: #fecdd3;
     color: #18181b;
     padding: 6px;
 }

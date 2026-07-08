@@ -41,7 +41,13 @@ class CodingSessionWidget(QWidget):
         self.title_label.setObjectName("titleLabel")
         self.settings_button = QPushButton("⚙")
         self.settings_button.setObjectName("settingsButton")
-        self.settings_button.setFixedWidth(34)
+        self.settings_button.setFixedWidth(30)
+        self.hide_button = QPushButton("-")
+        self.hide_button.setObjectName("windowControlButton")
+        self.hide_button.setFixedWidth(30)
+        self.close_button = QPushButton("×")
+        self.close_button.setObjectName("closeButton")
+        self.close_button.setFixedWidth(30)
         self.date_label = QLabel(f"Today: {self.today}")
         self.date_label.setObjectName("dateLabel")
         self.status_label = QLabel()
@@ -62,6 +68,8 @@ class CodingSessionWidget(QWidget):
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         header_layout.addWidget(self.settings_button)
+        header_layout.addWidget(self.hide_button)
+        header_layout.addWidget(self.close_button)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.coded_button)
@@ -83,6 +91,8 @@ class CodingSessionWidget(QWidget):
         self.unset_button.clicked.connect(self.mark_unset)
         self.not_coded_button.clicked.connect(self.mark_not_coded)
         self.save_note_button.clicked.connect(self.save_note)
+        self.hide_button.clicked.connect(self.hide)
+        self.close_button.clicked.connect(QApplication.quit)
         if self.open_settings is not None:
             self.settings_button.clicked.connect(self.open_settings)
 
@@ -271,8 +281,8 @@ class DesktopUI:
         hide_action.triggered.connect(lambda: self.set_mode("Hidden"))
         quit_action.triggered.connect(QApplication.quit)
 
-        menu.addAction(show_action)
         menu.addAction(settings_action)
+        menu.addAction(show_action)
         menu.addAction(hide_action)
         menu.addAction(quit_action)
 

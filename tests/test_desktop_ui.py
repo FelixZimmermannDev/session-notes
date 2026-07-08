@@ -70,6 +70,8 @@ def test_desktop_widget_buttons_have_style_object_names(app):
     assert widget.unset_button.text() == "Unset"
     assert widget.save_note_button.objectName() == "saveNoteButton"
     assert widget.settings_button.objectName() == "settingsButton"
+    assert widget.hide_button.objectName() == "windowControlButton"
+    assert widget.close_button.objectName() == "closeButton"
     assert "#2ecc71" in DARK_STYLE
     assert "#e74c3c" in DARK_STYLE
     assert "#3498db" in DARK_STYLE
@@ -78,6 +80,8 @@ def test_desktop_widget_buttons_have_style_object_names(app):
     assert "#71717a" in LIGHT_STYLE
     assert "settingsButton" in DARK_STYLE
     assert "settingsButton" in LIGHT_STYLE
+    assert "windowControlButton" in DARK_STYLE
+    assert "closeButton" in LIGHT_STYLE
 
 
 def test_desktop_ui_can_switch_between_hidden_window_and_floating_modes(app):
@@ -114,12 +118,21 @@ def test_desktop_ui_settings_are_stored_in_memory(app):
     assert ui.theme == "Light"
 
 
-def test_tray_right_click_menu_only_contains_show_settings_hide_and_quit(app):
+def test_tray_right_click_menu_has_settings_above_show(app):
     ui = DesktopUI()
 
     action_names = [action.text() for action in ui.tray_icon.contextMenu().actions()]
 
-    assert action_names == ["Show", "Settings", "Hide", "Quit"]
+    assert action_names == ["Settings", "Show", "Hide", "Quit"]
+
+
+def test_widget_hide_button_hides_widget(app):
+    tracker = SessionTracker()
+    widget = CodingSessionWidget(tracker)
+
+    widget.hide_button.click()
+
+    assert widget.isHidden() is True
 
 
 def test_settings_dialog_apply_keeps_dialog_open(app):
