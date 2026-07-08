@@ -3,4 +3,6 @@ from frontend.terminal_ui import TerminalUI
 
 
 if __name__ == "__main__":
-    TerminalUI(SessionTracker()).run()
+    tracker = SessionTracker()
+    ui = TerminalUI(tracker)
+    ui.run()

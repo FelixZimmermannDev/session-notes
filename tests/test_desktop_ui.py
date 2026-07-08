@@ -4,7 +4,7 @@ from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
 from backend.session_tracker import SessionTracker
-from frontend.desktop_ui import CodingSessionWidget, DesktopUI, SettingsDialog
+from frontend.desktop_ui import CodingSessionWidget, DesktopUI, FindDialog, SettingsDialog
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
 
 
@@ -17,71 +17,120 @@ def app():
     return QApplication([])
 
 
-def test_desktop_widget_coded_button_updates_status_label(app):
+def test_desktop_widget_starts_on_current_session_one(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)
 
-    widget.coded_button.click()
-
-    assert widget.status_label.text() == "Status: coded"
+    assert widget.summary_label.text() == "Session: 1"
 
 
-def test_desktop_widget_not_coded_button_updates_status_label(app):
+def test_desktop_widget_save_button_adds_session_and_shows_next_current_session(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)
-
-    widget.not_coded_button.click()
-
-    assert widget.status_label.text() == "Status: uncoded"
-
-
-def test_desktop_widget_unset_button_resets_status_label(app):
-    tracker = SessionTracker()
-    widget = CodingSessionWidget(tracker)
-    widget.coded_button.click()
-
-    widget.unset_button.click()
-
-    assert widget.status_label.text() == "Status: unset"
-    assert tracker.get_session_by_date(widget.today).is_unset() is True
-
-
-def test_desktop_widget_submit_note_saves_note_and_keeps_status_visible(app):
-    tracker = SessionTracker()
-    widget = CodingSessionWidget(tracker)
-    widget.coded_button.click()
     widget.note_input.setText("Worked on desktop UI")
 
     widget.save_note_button.click()
 
-    session = tracker.get_session_by_date(widget.today)
-    assert session.get_note() == "Worked on desktop UI"
+    sessions = tracker.get_sessions()
+    assert len(sessions) == 1
+    assert sessions[0].get_note() == "Worked on desktop UI"
     assert widget.note_input.text() == ""
-    assert widget.status_label.text() == "Status: coded"
+    assert widget.summary_label.text() == "Session: 2"
+    assert "#1" in widget.last_saved_label.text()
+
+
+def test_desktop_widget_enter_adds_session(app):
+    tracker = SessionTracker()
+    widget = CodingSessionWidget(tracker)
+    widget.note_input.setText("Saved with enter")
+
+    widget.note_input.returnPressed.emit()
+
+    assert tracker.get_sessions()[0].get_note() == "Saved with enter"
+    assert widget.summary_label.text() == "Session: 2"
+
+
+def test_desktop_widget_empty_note_shows_error(app):
+    tracker = SessionTracker()
+    widget = CodingSessionWidget(tracker)
+
+    widget.save_note_button.click()
+
+    assert tracker.get_sessions() == []
+    assert widget.last_saved_label.text() == "Session note cannot be empty."
+
+
+def test_find_dialog_date_input_starts_empty(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+
+    assert dialog.date_input.text() == ""
+
+
+def test_find_dialog_formats_date_input_with_dashes_and_only_allows_numbers(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+
+    dialog.date_input.setText("2026a07-08x")
+    dialog.format_date_input(dialog.date_input.text())
+
+    assert dialog.date_input.text() == "2026-07-08"
+
+
+def test_find_dialog_limits_date_input_to_eight_digits(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+
+    dialog.date_input.setText("202607081234")
+    dialog.format_date_input(dialog.date_input.text())
+
+    assert dialog.date_input.text() == "2026-07-08"
+
+
+def test_find_dialog_finds_session_by_number_and_clears_date_input(app):
+    tracker = SessionTracker()
+    tracker.add_session("First note")
+    ui = DesktopUI()
+    ui.tracker = tracker
+    dialog = FindDialog(ui)
+
+    dialog.date_input.setText("2026-07-08")
+    dialog.number_input.setText("1")
+    dialog.find_number_button.click()
+
+    assert dialog.date_input.text() == ""
+    assert "#1" in dialog.result_label.text()
+    assert "First note" in dialog.result_label.text()
+
+
+def test_find_dialog_finds_sessions_by_date_and_clears_number_input(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Today note")
+    ui = DesktopUI()
+    ui.tracker = tracker
+    dialog = FindDialog(ui)
+
+    dialog.number_input.setText("1")
+    dialog.date_input.setText(session.get_date())
+    dialog.find_date_button.click()
+
+    assert dialog.number_input.text() == ""
+    assert "Today note" in dialog.result_label.text()
 
 
 def test_desktop_widget_buttons_have_style_object_names(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)
 
-    assert widget.coded_button.objectName() == "codedButton"
-    assert widget.not_coded_button.objectName() == "notCodedButton"
-    assert widget.unset_button.objectName() == "unsetButton"
-    assert widget.unset_button.text() == "Unset"
     assert widget.save_note_button.objectName() == "saveNoteButton"
+    assert widget.find_button.objectName() == "findButton"
     assert widget.settings_button.objectName() == "settingsButton"
     assert widget.hide_button.objectName() == "windowControlButton"
     assert widget.close_button.objectName() == "closeButton"
-    assert "#2ecc71" in DARK_STYLE
-    assert "#e74c3c" in DARK_STYLE
     assert "#3498db" in DARK_STYLE
-    assert "#6b7280" in DARK_STYLE
     assert "#2563eb" in LIGHT_STYLE
-    assert "#71717a" in LIGHT_STYLE
-    assert "settingsButton" in DARK_STYLE
+    assert "findButton" in DARK_STYLE
     assert "settingsButton" in LIGHT_STYLE
-    assert "windowControlButton" in DARK_STYLE
-    assert "closeButton" in LIGHT_STYLE
 
 
 def test_desktop_ui_can_switch_between_hidden_window_and_floating_modes(app):
@@ -165,3 +214,12 @@ def test_widget_settings_button_opens_settings_dialog(app):
 
     assert ui.settings_dialog is not None
     assert ui.settings_dialog.isVisible() is True
+
+
+def test_widget_find_button_opens_find_dialog(app):
+    ui = DesktopUI()
+
+    ui.widget.find_button.click()
+
+    assert ui.find_dialog is not None
+    assert ui.find_dialog.isVisible() is True

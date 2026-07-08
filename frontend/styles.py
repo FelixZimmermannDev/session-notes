@@ -55,7 +55,7 @@ QPushButton#unsetButton {
     color: white;
 }
 
-QPushButton#saveNoteButton {
+QPushButton#saveNoteButton, QPushButton#findButton {
     background-color: #3498db;
     color: white;
 }
@@ -150,7 +150,7 @@ QPushButton#unsetButton {
     color: white;
 }
 
-QPushButton#saveNoteButton {
+QPushButton#saveNoteButton, QPushButton#findButton {
     background-color: #2563eb;
     color: white;
 }

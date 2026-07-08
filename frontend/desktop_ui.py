@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from backend.coding_session import SessionStatus
 from backend.session_tracker import SessionTracker
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
 
@@ -29,6 +28,7 @@ class CodingSessionWidget(QWidget):
         super().__init__()
         self.tracker = tracker
         self.open_settings = open_settings
+        self.open_find = None
         self.today = date.today().isoformat()
         self.position = "top-right"
         self.always_on_top = True
@@ -48,21 +48,20 @@ class CodingSessionWidget(QWidget):
         self.close_button = QPushButton("×")
         self.close_button.setObjectName("closeButton")
         self.close_button.setFixedWidth(30)
+
         self.date_label = QLabel(f"Today: {self.today}")
         self.date_label.setObjectName("dateLabel")
-        self.status_label = QLabel()
-        self.status_label.setObjectName("statusLabel")
+        self.summary_label = QLabel("Session: 1")
+        self.summary_label.setObjectName("statusLabel")
+        self.last_saved_label = QLabel("Last saved: none")
+        self.last_saved_label.setObjectName("dateLabel")
 
-        self.coded_button = QPushButton("Coded")
-        self.coded_button.setObjectName("codedButton")
-        self.unset_button = QPushButton("Unset")
-        self.unset_button.setObjectName("unsetButton")
-        self.not_coded_button = QPushButton("Not coded")
-        self.not_coded_button.setObjectName("notCodedButton")
         self.note_input = QLineEdit()
-        self.note_input.setPlaceholderText("Note for today")
+        self.note_input.setPlaceholderText("Write a session note")
         self.save_note_button = QPushButton("Save note")
         self.save_note_button.setObjectName("saveNoteButton")
+        self.find_button = QPushButton("Find")
+        self.find_button.setObjectName("findButton")
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.title_label)
@@ -71,34 +70,32 @@ class CodingSessionWidget(QWidget):
         header_layout.addWidget(self.hide_button)
         header_layout.addWidget(self.close_button)
 
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.coded_button)
-        button_layout.addWidget(self.unset_button)
-        button_layout.addWidget(self.not_coded_button)
+        action_layout = QHBoxLayout()
+        action_layout.addWidget(self.save_note_button)
+        action_layout.addWidget(self.find_button)
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(14, 14, 14, 14)
         self.layout.setSpacing(10)
         self.layout.addLayout(header_layout)
         self.layout.addWidget(self.date_label)
-        self.layout.addWidget(self.status_label)
-        self.layout.addLayout(button_layout)
+        self.layout.addWidget(self.summary_label)
+        self.layout.addWidget(self.last_saved_label)
         self.layout.addWidget(self.note_input)
-        self.layout.addWidget(self.save_note_button)
+        self.layout.addLayout(action_layout)
         self.setLayout(self.layout)
 
-        self.coded_button.clicked.connect(self.mark_coded)
-        self.unset_button.clicked.connect(self.mark_unset)
-        self.not_coded_button.clicked.connect(self.mark_not_coded)
+        self.note_input.returnPressed.connect(self.save_note)
         self.save_note_button.clicked.connect(self.save_note)
+        self.find_button.clicked.connect(self.show_find_dialog)
         self.hide_button.clicked.connect(self.hide)
         self.close_button.clicked.connect(QApplication.quit)
         if self.open_settings is not None:
             self.settings_button.clicked.connect(self.open_settings)
 
-        self.resize(320, 190)
+        self.resize(340, 210)
         self.show_as_floating()
-        self.update_status_label()
+        self.update_summary()
 
     def closeEvent(self, event: QCloseEvent):
         event.ignore()
@@ -108,9 +105,9 @@ class CodingSessionWidget(QWidget):
         self.hide()
         self.setWindowFlags(Qt.Window)
         self.setWindowOpacity(1.0)
-        self.resize(360, 220)
+        self.resize(390, 240)
         self.show()
-        self.update_status_label()
+        self.update_summary()
 
     def show_as_floating(self):
         self.hide()
@@ -118,10 +115,10 @@ class CodingSessionWidget(QWidget):
         if self.always_on_top:
             flags = flags | Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
-        self.resize(320, 190)
+        self.resize(340, 210)
         self.move_to_position()
         self.show()
-        self.update_status_label()
+        self.update_summary()
 
     def set_always_on_top(self, enabled):
         self.always_on_top = enabled
@@ -136,11 +133,13 @@ class CodingSessionWidget(QWidget):
         self.compact_mode = enabled
         if enabled:
             self.date_label.hide()
-            self.resize(280, 155)
+            self.last_saved_label.hide()
+            self.resize(300, 165)
             self.layout.setSpacing(7)
         else:
             self.date_label.show()
-            self.resize(320, 190)
+            self.last_saved_label.show()
+            self.resize(340, 210)
             self.layout.setSpacing(10)
         self.move_to_position()
 
@@ -164,37 +163,112 @@ class CodingSessionWidget(QWidget):
 
         self.move(x, y)
 
-    def mark_coded(self):
-        self.tracker.mark_day_coded(self.today)
-        self.update_status_label()
-
-    def mark_not_coded(self):
-        self.tracker.mark_day_not_coded(self.today)
-        self.update_status_label()
-
-    def mark_unset(self):
-        session = self.tracker.get_or_create_session(self.today)
-        session.status = SessionStatus.UNSET
-        self.update_status_label()
-
     def save_note(self):
-        self.tracker.update_note_for_date(self.today, self.note_input.text())
+        try:
+            session = self.tracker.add_session(self.note_input.text())
+        except ValueError as error:
+            self.last_saved_label.setText(str(error))
+            return
+
         self.note_input.clear()
-        self.update_status_label()
+        self.update_summary(session)
 
-    def update_status_label(self):
-        session = self.tracker.get_or_create_session(self.today)
-        status = session.get_status().value
-        self.status_label.setText(f"Status: {status}")
+    def update_summary(self, last_session=None):
+        sessions = self.tracker.get_sessions()
+        self.summary_label.setText(f"Session: {len(sessions) + 1}")
+        self.summary_label.setStyleSheet("background-color: #6b7280; color: white;")
 
-        if status == "coded":
-            color = "#2ecc71"
-        elif status == "uncoded":
-            color = "#e74c3c"
+        if last_session is not None:
+            self.last_saved_label.setText(
+                f"Last saved: #{last_session.get_session_number()} "
+                f"on {last_session.get_date()} — {last_session.get_note()}"
+            )
+
+    def show_find_dialog(self):
+        if self.open_find is not None:
+            self.open_find()
+
+
+class FindDialog(QDialog):
+    def __init__(self, desktop_ui):
+        super().__init__(desktop_ui.widget)
+        self.desktop_ui = desktop_ui
+        self.tracker = desktop_ui.tracker
+        self.setWindowTitle("Find sessions")
+
+        self.number_input = QLineEdit()
+        self.number_input.setPlaceholderText("Session number")
+        self.find_number_button = QPushButton("Find number")
+
+        self.date_input = QLineEdit()
+        self.date_input.setPlaceholderText("YYYY-MM-DD")
+        self.is_formatting_date_input = False
+        self.find_date_button = QPushButton("Find date")
+
+        self.result_label = QLabel("Enter a session number or date.")
+        self.result_label.setWordWrap(True)
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Find by number"))
+        layout.addWidget(self.number_input)
+        layout.addWidget(self.find_number_button)
+        layout.addWidget(QLabel("Find by date"))
+        layout.addWidget(self.date_input)
+        layout.addWidget(self.find_date_button)
+        layout.addWidget(self.result_label)
+        self.setLayout(layout)
+
+        self.number_input.returnPressed.connect(self.find_by_number)
+        self.date_input.textEdited.connect(self.format_date_input)
+        self.date_input.returnPressed.connect(self.find_by_date)
+        self.find_number_button.clicked.connect(self.find_by_number)
+        self.find_date_button.clicked.connect(self.find_by_date)
+
+    def format_date_input(self, text):
+        if self.is_formatting_date_input:
+            return
+
+        self.is_formatting_date_input = True
+        digits = "".join(character for character in text if character.isdigit())[:8]
+
+        if len(digits) <= 4:
+            formatted_date = digits
+        elif len(digits) <= 6:
+            formatted_date = f"{digits[:4]}-{digits[4:]}"
         else:
-            color = "#6b7280"
+            formatted_date = f"{digits[:4]}-{digits[4:6]}-{digits[6:]}"
 
-        self.status_label.setStyleSheet(f"background-color: {color}; color: white;")
+        self.date_input.setText(formatted_date)
+        self.date_input.setCursorPosition(len(formatted_date))
+        self.is_formatting_date_input = False
+
+    def find_by_number(self):
+        self.date_input.clear()
+
+        try:
+            session_number = int(self.number_input.text())
+        except ValueError:
+            self.result_label.setText("Please enter a valid session number.")
+            return
+
+        session = self.tracker.get_session_by_number(session_number)
+        if session is None:
+            self.result_label.setText("No session found for that number.")
+            return
+
+        self.result_label.setText(self.format_session(session))
+
+    def find_by_date(self):
+        self.number_input.clear()
+        sessions = self.tracker.get_sessions_by_date(self.date_input.text())
+        if not sessions:
+            self.result_label.setText("No sessions found for that date.")
+            return
+
+        self.result_label.setText("\n".join(self.format_session(session) for session in sessions))
+
+    def format_session(self, session):
+        return f"#{session.get_session_number()} | {session.get_date()} | {session.get_note()}"
 
 
 class SettingsDialog(QDialog):
@@ -258,7 +332,9 @@ class DesktopUI:
         QApplication.instance().setStyleSheet(DARK_STYLE)
         self.tracker = SessionTracker()
         self.settings_dialog = None
+        self.find_dialog = None
         self.widget = CodingSessionWidget(self.tracker, self.show_settings)
+        self.widget.open_find = self.show_find
         self.mode = "Floating"
         self.opacity_label = "100%"
         self.theme = "Dark"
@@ -328,7 +404,7 @@ class DesktopUI:
             QApplication.instance().setStyleSheet(LIGHT_STYLE)
         else:
             QApplication.instance().setStyleSheet(DARK_STYLE)
-        self.widget.update_status_label()
+        self.widget.update_summary()
 
     def show_settings(self):
         if self.settings_dialog is None or not self.settings_dialog.isVisible():
@@ -336,6 +412,13 @@ class DesktopUI:
         self.settings_dialog.show()
         self.settings_dialog.raise_()
         self.settings_dialog.activateWindow()
+
+    def show_find(self):
+        if self.find_dialog is None or not self.find_dialog.isVisible():
+            self.find_dialog = FindDialog(self)
+        self.find_dialog.show()
+        self.find_dialog.raise_()
+        self.find_dialog.activateWindow()
 
     def run(self):
         self.set_mode("Floating")

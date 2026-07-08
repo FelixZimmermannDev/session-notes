@@ -1,56 +1,36 @@
+from datetime import date
+
 from backend.coding_session import CodingSession
 
 
-# Verwaltet alle Coding-Sessions.
-# Sucht Sessions nach Datum und stellt Feature-Methoden für die UI bereit.
 class SessionTracker:
-
     def __init__(self):
         self.sessions = []
 
-    # Session collection
-    def add_session(self, session):
+    def add_session(self, note):
+        session_number = len(self.sessions) + 1
+        today = date.today().isoformat()
+
+        session = CodingSession(session_number, today, note)
+
         self.sessions.append(session)
+        return session
 
     def get_sessions(self):
         return self.sessions
 
-    # Daily session lookup
-    def get_session_by_date(self, date):
+    def get_session_by_number(self, session_number):
         for session in self.sessions:
-            if session.get_date() == date:
+            if session.get_session_number() == session_number:
                 return session
 
         return None
 
-    def has_session_for_date(self, date):
-        return self.get_session_by_date(date) is not None
+    def get_sessions_by_date(self, target_date):
+        matching_sessions = []
 
-    # Daily session creation
-    def get_or_create_session(self, date):
-        session = self.get_session_by_date(date)
+        for session in self.sessions:
+            if session.get_date() == target_date:
+                matching_sessions.append(session)
 
-        if session is None:
-            session = CodingSession(date)
-            self.add_session(session)
-
-        return session
-
-    # Daily status feature
-    def mark_day_coded(self, date):
-        session = self.get_or_create_session(date)
-        session.mark_coded()
-        return session
-
-    def mark_day_not_coded(self, date):
-        session = self.get_or_create_session(date)
-        session.mark_uncoded()
-        return session
-
-    # Daily note feature
-    # Updates the note for a specific day.
-    def update_note_for_date(self, date, note):
-        session = self.get_or_create_session(date)
-        session.update_note(note)
-        return session
-
+        return matching_sessions

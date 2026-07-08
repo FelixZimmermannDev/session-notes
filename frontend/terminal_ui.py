@@ -1,5 +1,3 @@
-from datetime import date
-
 from backend.session_tracker import SessionTracker
 
 
@@ -8,23 +6,18 @@ class TerminalUI:
     def __init__(self, session_tracker: SessionTracker):
         self.session_tracker = session_tracker
 
-
-
-
     def run(self):
-        today = date.today().isoformat()
+        note = input("Session note: ")
 
-        coded_answer = input("Did you code today? (y/n) ")
-        note = input("Note: ")
+        try:
+            session = self.session_tracker.add_session(note)
+            self.show_saved_session(session)
 
-        if coded_answer.lower() == "y":
-            session = self.session_tracker.mark_day_coded(today)
-        else:
-            session = self.session_tracker.mark_day_not_coded(today)
+        except ValueError as error:
+            print(f"Error: {error}")
 
-        session = self.session_tracker.update_note_for_date(today, note)
-
-        print("Saved session:")
+    def show_saved_session(self, session):
+        print()
+        print(f"Saved Session {session.get_session_number()}")
         print(f"Date: {session.get_date()}")
-        print(f"Status: {session.get_status().value}")
         print(f"Note: {session.get_note()}")

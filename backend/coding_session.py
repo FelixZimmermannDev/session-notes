@@ -1,44 +1,27 @@
-from enum import Enum
-class SessionStatus(Enum):
-    UNSET = 'unset'
-    CODED = 'coded'
-    UNCODED = 'uncoded'
-
-
 class CodingSession:
 
-    def __init__(self, date):
+    def __init__(self, session_number, date, note):
+        self.session_number = session_number
         self.date = date
-        self.status = SessionStatus.UNSET
-        self.note = ''
+        self.note = self._clean_note(note)
 
-    #Status feature
-    def mark_coded(self):
-        self.status = SessionStatus.CODED
-
-    def mark_uncoded(self):
-        self.status = SessionStatus.UNCODED
-
-    def is_coded(self):
-        return self.status == SessionStatus.CODED
-
-    def is_uncoded(self):
-        return self.status == SessionStatus.UNCODED
-
-    def is_unset(self):
-        return self.status == SessionStatus.UNSET
-
-    #Note Feature
+    #Note
     def update_note(self, note):
-        self.note = note
+        self.note = self._clean_note(note)
 
-    #Read Methods
-    def get_date(self):
-        return self.date
+    def _clean_note(self, note):
+        if not note or not note.strip():
+            raise ValueError("Session note cannot be empty.")
 
-    def get_status(self):
-        return self.status
+        return note.strip()
 
     def get_note(self):
         return self.note
 
+    #Session Number
+    def get_session_number(self):
+        return self.session_number
+
+    #Date
+    def get_date(self):
+        return self.date
