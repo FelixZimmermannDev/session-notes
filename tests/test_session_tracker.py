@@ -1,4 +1,4 @@
-from backend.coding_session import CodingSession
+from backend.coding_session import CodingSession, SessionStatus
 from backend.session_tracker import SessionTracker
 
 
@@ -67,3 +67,47 @@ def test_get_or_create_session_reuses_existing_session():
 
     assert session is existing_session
     assert tracker.get_sessions() == [existing_session]
+
+
+def test_mark_day_coded_creates_session_when_missing():
+    tracker = SessionTracker()
+
+    session = tracker.mark_day_coded("2026-07-08")
+
+    assert session.get_date() == "2026-07-08"
+    assert tracker.get_sessions() == [session]
+
+
+def test_mark_day_coded_sets_status_to_coded():
+    tracker = SessionTracker()
+
+    session = tracker.mark_day_coded("2026-07-08")
+
+    assert session.get_status() == SessionStatus.CODED
+
+
+def test_mark_day_not_coded_creates_session_when_missing():
+    tracker = SessionTracker()
+
+    session = tracker.mark_day_not_coded("2026-07-08")
+
+    assert session.get_date() == "2026-07-08"
+    assert tracker.get_sessions() == [session]
+
+
+def test_mark_day_not_coded_sets_status_to_uncoded():
+    tracker = SessionTracker()
+
+    session = tracker.mark_day_not_coded("2026-07-08")
+
+    assert session.get_status() == SessionStatus.UNCODED
+
+
+def test_mark_day_coded_twice_for_same_date_does_not_create_duplicates():
+    tracker = SessionTracker()
+
+    first_session = tracker.mark_day_coded("2026-07-08")
+    second_session = tracker.mark_day_coded("2026-07-08")
+
+    assert second_session is first_session
+    assert tracker.get_sessions() == [first_session]
