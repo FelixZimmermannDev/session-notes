@@ -46,3 +46,11 @@ class SessionTracker:
         session = self.get_or_create_session(date)
         session.mark_uncoded()
         return session
+
+    # Daily note feature
+    # Updates the note for a specific day.
+    def update_note_for_date(self, date, note):
+        session = self.get_or_create_session(date)
+        session.update_note(note)
+        return session
+

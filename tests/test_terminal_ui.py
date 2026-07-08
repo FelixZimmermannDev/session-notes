@@ -1,16 +1,15 @@
-import pytest
+from backend.session_tracker import SessionTracker
+from frontend.terminal_ui import TerminalUI
 
 
-try:
-    from frontend.terminal_ui import TerminalUI
-except ImportError:
-    pytest.skip("TerminalUI depends on SessionTracker, which is not implemented yet", allow_module_level=True)
+def test_terminal_ui_logs_todays_session(monkeypatch, capsys):
+    answers = iter(["y", "Worked on terminal UI"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
-
-def test_terminal_ui_prints_title_when_run(capsys):
-    ui = TerminalUI()
-
+    ui = TerminalUI(SessionTracker())
     ui.run()
 
     captured = capsys.readouterr()
-    assert "Coding Session Tracker" in captured.out
+    assert "Saved session:" in captured.out
+    assert "Status: coded" in captured.out
+    assert "Note: Worked on terminal UI" in captured.out
