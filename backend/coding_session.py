@@ -25,3 +25,20 @@ class CodingSession:
     #Date
     def get_date(self):
         return self.date
+
+    #JSON
+    def to_dict(self):
+        return {
+            "session_number": self.session_number,
+            "date": self.date,
+            "note": self.note
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            data["session_number"],
+            data["date"],
+            data["note"]
+        )
+    

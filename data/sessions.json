@@ -1,0 +1,17 @@
+[
+    {
+        "session_number": 1,
+        "date": "2026-07-08",
+        "note": "First JSON test"
+    },
+    {
+        "session_number": 2,
+        "date": "2026-07-08",
+        "note": "Second JSON test"
+    },
+    {
+        "session_number": 3,
+        "date": "2026-07-09",
+        "note": "note"
+    }
+]

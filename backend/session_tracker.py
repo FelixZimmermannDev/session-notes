@@ -34,3 +34,7 @@ class SessionTracker:
                 matching_sessions.append(session)
 
         return matching_sessions
+
+    #JSON
+    def set_sessions(self, sessions):
+        self.sessions = sessions
