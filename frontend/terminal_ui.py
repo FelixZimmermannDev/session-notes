@@ -1,3 +1,4 @@
+from backend.coding_session import EmptyNoteError
 from backend.session_tracker import SessionTracker
 
 
@@ -15,8 +16,8 @@ class TerminalUI:
             self.storage.save_sessions(self.session_tracker.get_sessions())
             self.show_saved_session(session)
 
-        except ValueError as error:
-            print(f"Error: {error}")
+        except EmptyNoteError:
+            print("Please enter a session note")
 
     def show_saved_session(self, session):
         print()

@@ -1,3 +1,6 @@
+class EmptyNoteError(ValueError):
+    pass
+
 class CodingSession:
 
     def __init__(self, session_number, date, note):
@@ -6,14 +9,16 @@ class CodingSession:
         self.note = self._clean_note(note)
 
     #Note
-    def update_note(self, note):
-        self.note = self._clean_note(note)
-
     def _clean_note(self, note):
-        if not note or not note.strip():
-            raise ValueError("Session note cannot be empty.")
+        if note is None:
+            raise EmptyNoteError
 
-        return note.strip()
+        cleaned_note = note.strip()
+
+        if not cleaned_note:
+            raise EmptyNoteError
+
+        return cleaned_note
 
     def get_note(self):
         return self.note
@@ -41,4 +46,3 @@ class CodingSession:
             data["date"],
             data["note"]
         )
-    

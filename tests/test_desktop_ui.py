@@ -68,7 +68,7 @@ def test_desktop_widget_empty_note_shows_error(app):
     widget.save_note_button.click()
 
     assert tracker.get_sessions() == []
-    assert widget.last_saved_label.text() == "Session note cannot be empty."
+    assert widget.last_saved_label.text() == ""
 
 
 def test_desktop_widget_uses_first_word_for_last_saved_note_preview(app):

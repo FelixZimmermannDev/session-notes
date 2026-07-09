@@ -4,11 +4,13 @@ from pathlib import Path
 from backend.coding_session import CodingSession
 
 class JsonStorage:
+
     def __init__(self, file_path):
         self.file_path = Path(file_path)
 
     def save_sessions(self, sessions):
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
+
         data = []
 
         for session in sessions:

@@ -1,12 +1,13 @@
 from datetime import date
-
 from backend.coding_session import CodingSession
 
 
 class SessionTracker:
+
     def __init__(self):
         self.sessions = []
 
+    #Add Session
     def add_session(self, note):
         session_number = len(self.sessions) + 1
         today = date.today().isoformat()
@@ -14,11 +15,13 @@ class SessionTracker:
         session = CodingSession(session_number, today, note)
 
         self.sessions.append(session)
+
         return session
 
     def get_sessions(self):
         return self.sessions
 
+    #Find Sessions
     def get_session_by_number(self, session_number):
         for session in self.sessions:
             if session.get_session_number() == session_number:

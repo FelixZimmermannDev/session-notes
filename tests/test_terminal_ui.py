@@ -44,7 +44,7 @@ def test_terminal_ui_shows_error_for_empty_note(monkeypatch, capsys):
     ui.run()
 
     captured = capsys.readouterr()
-    assert "Error: Session note cannot be empty." in captured.out
+    assert "Please enter a session note" in captured.out
 
 
 def test_terminal_ui_does_not_save_empty_note(monkeypatch):
