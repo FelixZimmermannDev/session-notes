@@ -24,10 +24,11 @@ from frontend.styles import DARK_STYLE, LIGHT_STYLE
 
 
 class CodingSessionWidget(QWidget):
-    def __init__(self, tracker, open_settings=None):
+    def __init__(self, tracker, open_settings=None, save_sessions=None):
         super().__init__()
         self.tracker = tracker
         self.open_settings = open_settings
+        self.save_sessions = save_sessions
         self.open_find = None
         self.today = date.today().isoformat()
         self.position = "top-right"
@@ -169,6 +170,9 @@ class CodingSessionWidget(QWidget):
         except ValueError as error:
             self.last_saved_label.setText(str(error))
             return
+
+        if self.save_sessions is not None:
+            self.save_sessions()
 
         self.note_input.clear()
         self.update_summary(session)
@@ -328,12 +332,13 @@ class SettingsDialog(QDialog):
 
 
 class DesktopUI:
-    def __init__(self):
+    def __init__(self, tracker=None, storage=None):
         QApplication.instance().setStyleSheet(DARK_STYLE)
-        self.tracker = SessionTracker()
+        self.tracker = tracker or SessionTracker()
+        self.storage = storage
         self.settings_dialog = None
         self.find_dialog = None
-        self.widget = CodingSessionWidget(self.tracker, self.show_settings)
+        self.widget = CodingSessionWidget(self.tracker, self.show_settings, self.save_sessions)
         self.widget.open_find = self.show_find
         self.mode = "Floating"
         self.opacity_label = "100%"
@@ -370,6 +375,10 @@ class DesktopUI:
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.set_mode("Floating")
             self.tray_icon.contextMenu().popup(QCursor.pos())
+
+    def save_sessions(self):
+        if self.storage is not None:
+            self.storage.save_sessions(self.tracker.get_sessions())
 
     def set_mode(self, mode):
         self.mode = mode

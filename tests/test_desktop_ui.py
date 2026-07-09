@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
+from backend.coding_session import CodingSession
 from backend.session_tracker import SessionTracker
 from frontend.desktop_ui import CodingSessionWidget, DesktopUI, FindDialog, SettingsDialog
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
@@ -15,6 +16,16 @@ def app():
         return existing_app
 
     return QApplication([])
+
+
+class FakeStorage:
+    def __init__(self):
+        self.saved_sessions = None
+        self.save_call_count = 0
+
+    def save_sessions(self, sessions):
+        self.saved_sessions = list(sessions)
+        self.save_call_count += 1
 
 
 def test_desktop_widget_starts_on_current_session_one(app):
@@ -58,6 +69,29 @@ def test_desktop_widget_empty_note_shows_error(app):
 
     assert tracker.get_sessions() == []
     assert widget.last_saved_label.text() == "Session note cannot be empty."
+
+
+def test_desktop_ui_starts_with_loaded_sessions(app):
+    tracker = SessionTracker()
+    tracker.set_sessions([CodingSession(1, "2026-07-08", "Loaded desktop note")])
+
+    ui = DesktopUI(tracker, FakeStorage())
+
+    assert ui.tracker.get_sessions()[0].get_note() == "Loaded desktop note"
+    assert ui.widget.summary_label.text() == "Session: 2"
+
+
+def test_desktop_ui_saves_sessions_to_storage(app):
+    tracker = SessionTracker()
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    ui.widget.note_input.setText("Saved from desktop")
+
+    ui.widget.save_note_button.click()
+
+    assert storage.save_call_count == 1
+    assert len(storage.saved_sessions) == 1
+    assert storage.saved_sessions[0].get_note() == "Saved from desktop"
 
 
 def test_find_dialog_date_input_starts_empty(app):
