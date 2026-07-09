@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QStyle,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -56,6 +57,8 @@ class CodingSessionWidget(QWidget):
         self.summary_label.setObjectName("statusLabel")
         self.last_saved_label = QLabel("Last saved: none")
         self.last_saved_label.setObjectName("dateLabel")
+        self.last_saved_label.setWordWrap(False)
+        self.last_saved_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         self.note_input = QLineEdit()
         self.note_input.setPlaceholderText("Write a session note")
@@ -183,10 +186,25 @@ class CodingSessionWidget(QWidget):
         self.summary_label.setStyleSheet("background-color: #6b7280; color: white;")
 
         if last_session is not None:
-            self.last_saved_label.setText(
+            text = (
                 f"Last saved: #{last_session.get_session_number()} "
                 f"on {last_session.get_date()} — {last_session.get_note()}"
             )
+            self.last_saved_label.setText(self.shorten_text_to_fit(text))
+
+    def shorten_text_to_fit(self, text):
+        available_width = max(self.width() - 28, 250)
+        font_metrics = self.last_saved_label.fontMetrics()
+
+        if font_metrics.horizontalAdvance(text) <= available_width:
+            return text
+
+        ellipsis = "..."
+        shortened_text = text
+        while shortened_text and font_metrics.horizontalAdvance(shortened_text + ellipsis) > available_width:
+            shortened_text = shortened_text[:-1]
+
+        return shortened_text + ellipsis
 
     def show_find_dialog(self):
         if self.open_find is not None:
