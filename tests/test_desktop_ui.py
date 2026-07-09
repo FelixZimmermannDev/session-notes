@@ -71,16 +71,25 @@ def test_desktop_widget_empty_note_shows_error(app):
     assert widget.last_saved_label.text() == "Session note cannot be empty."
 
 
-def test_desktop_widget_shortens_long_last_saved_note(app):
+def test_desktop_widget_uses_first_word_for_last_saved_note_preview(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)
-    long_note = "This is a very long note " * 20
-    widget.note_input.setText(long_note)
+    widget.note_input.setText("This is a very long note")
 
     widget.save_note_button.click()
 
-    assert widget.last_saved_label.text().endswith("...")
-    assert len(widget.last_saved_label.text()) < len(long_note)
+    assert widget.last_saved_label.text().endswith("This...")
+    assert "very long note" not in widget.last_saved_label.text()
+
+
+def test_desktop_widget_shortens_very_long_first_word_in_last_saved_note(app):
+    tracker = SessionTracker()
+    widget = CodingSessionWidget(tracker)
+    widget.note_input.setText("supercalifragilisticexpialidocious note")
+
+    widget.save_note_button.click()
+
+    assert widget.last_saved_label.text().endswith("supercalifragil...")
 
 
 def test_desktop_ui_starts_with_loaded_sessions(app):

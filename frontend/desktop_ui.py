@@ -186,25 +186,22 @@ class CodingSessionWidget(QWidget):
         self.summary_label.setStyleSheet("background-color: #6b7280; color: white;")
 
         if last_session is not None:
-            text = (
+            note_preview = self.create_note_preview(last_session.get_note())
+            self.last_saved_label.setText(
                 f"Last saved: #{last_session.get_session_number()} "
-                f"on {last_session.get_date()} — {last_session.get_note()}"
+                f"on {last_session.get_date()} — {note_preview}"
             )
-            self.last_saved_label.setText(self.shorten_text_to_fit(text))
 
-    def shorten_text_to_fit(self, text):
-        available_width = max(self.width() - 28, 250)
-        font_metrics = self.last_saved_label.fontMetrics()
+    def create_note_preview(self, note):
+        first_word = note.split()[0]
 
-        if font_metrics.horizontalAdvance(text) <= available_width:
-            return text
+        if len(first_word) > 15:
+            return first_word[:15] + "..."
 
-        ellipsis = "..."
-        shortened_text = text
-        while shortened_text and font_metrics.horizontalAdvance(shortened_text + ellipsis) > available_width:
-            shortened_text = shortened_text[:-1]
+        if len(note.split()) > 1:
+            return first_word + "..."
 
-        return shortened_text + ellipsis
+        return first_word
 
     def show_find_dialog(self):
         if self.open_find is not None:
