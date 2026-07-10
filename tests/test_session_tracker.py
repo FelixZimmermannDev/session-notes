@@ -1,7 +1,7 @@
 from datetime import date
 
 from backend.session_tracker import SessionTracker
-
+from backend.coding_session import CodingSession
 
 def test_tracker_starts_with_empty_session_list():
     tracker = SessionTracker()
@@ -60,3 +60,29 @@ def test_get_sessions_by_date_returns_empty_list_when_missing():
     tracker = SessionTracker()
 
     assert tracker.get_sessions_by_date("1999-01-01") == []
+
+def test_set_sessions_sets_loaded_sessions():
+    tracker = SessionTracker()
+
+    loaded_session = CodingSession(
+        5,
+        "2026-07-08",
+        "Loaded session"
+    )
+
+    tracker.set_sessions([loaded_session])
+
+    assert tracker.get_sessions() == [loaded_session]
+
+
+def test_add_session_uses_highest_existing_session_number():
+    tracker = SessionTracker()
+    loaded_sessions = [
+        CodingSession(5, "2026-07-08", "Higher numbered session"),
+        CodingSession(2, "2026-07-07", "Lower numbered session"),
+    ]
+    tracker.set_sessions(loaded_sessions)
+
+    new_session = tracker.add_session("New session")
+
+    assert new_session.get_session_number() == 6

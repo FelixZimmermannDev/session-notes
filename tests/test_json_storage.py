@@ -70,6 +70,14 @@ def test_save_then_load_round_trip_preserves_multiple_sessions(tmp_path):
     storage.save_sessions(original_sessions)
     loaded_sessions = storage.load_sessions()
 
-    assert [session.to_dict() for session in loaded_sessions] == [
-        session.to_dict() for session in original_sessions
-    ]
+    loaded_data = []
+
+    for session in loaded_sessions:
+        loaded_data.append(session.to_dict())
+
+    original_data = []
+
+    for session in original_sessions:
+        original_data.append(session.to_dict())
+
+    assert loaded_data == original_data

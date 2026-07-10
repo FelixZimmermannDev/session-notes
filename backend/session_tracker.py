@@ -1,4 +1,7 @@
 from datetime import date
+
+from pygments import highlight
+
 from backend.coding_session import CodingSession
 
 
@@ -9,7 +12,13 @@ class SessionTracker:
 
     #Add Session
     def add_session(self, note):
-        session_number = len(self.sessions) + 1
+        highest_session_number = 0
+
+        for session in self.sessions:
+            if session.get_session_number() > highest_session_number:
+                highest_session_number = session.get_session_number()
+
+        session_number = highest_session_number + 1
         today = date.today().isoformat()
 
         session = CodingSession(session_number, today, note)
