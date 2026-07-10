@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from backend.session_tracker import SessionTracker
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
+from backend.coding_session import EmptyNoteError
 
 
 class CodingSessionWidget(QWidget):
@@ -170,7 +171,7 @@ class CodingSessionWidget(QWidget):
     def save_note(self):
         try:
             session = self.tracker.add_session(self.note_input.text())
-        except ValueError as error:
+        except EmptyNoteError as error:
             self.last_saved_label.setText(str(error))
             return
 

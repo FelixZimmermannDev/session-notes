@@ -71,6 +71,19 @@ def test_desktop_widget_empty_note_shows_error(app):
     assert widget.last_saved_label.text() == "Please enter a session note"
 
 
+def test_desktop_widget_does_not_hide_unexpected_value_errors(app, monkeypatch):
+    tracker = SessionTracker()
+    widget = CodingSessionWidget(tracker)
+
+    def raise_unexpected_value_error(note):
+        raise ValueError("Unexpected error")
+
+    monkeypatch.setattr(tracker, "add_session", raise_unexpected_value_error)
+
+    with pytest.raises(ValueError, match="Unexpected error"):
+        widget.save_note()
+
+
 def test_desktop_widget_uses_first_word_for_last_saved_note_preview(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)
