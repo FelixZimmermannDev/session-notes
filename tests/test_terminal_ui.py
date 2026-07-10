@@ -106,3 +106,73 @@ def test_terminal_ui_searches_sessions_by_date(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "Note: Today session" in captured.out
+
+def test_terminal_ui_shows_message_when_session_number_is_missing(
+    monkeypatch,
+    capsys,
+):
+    set_inputs(monkeypatch, "2", "1", "99")
+
+    TerminalUI(SessionTracker(), FakeStorage()).run()
+
+    captured = capsys.readouterr()
+
+    assert "Session not found" in captured.out
+
+
+def test_terminal_ui_shows_message_when_note_has_no_matches(
+    monkeypatch,
+    capsys,
+):
+    tracker = SessionTracker()
+    tracker.add_session("Worked on backend")
+
+    set_inputs(monkeypatch, "2", "2", "desktop")
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+
+    assert "No sessions found" in captured.out
+
+
+def test_terminal_ui_shows_message_when_date_has_no_matches(
+    monkeypatch,
+    capsys,
+):
+    tracker = SessionTracker()
+    tracker.add_session("Today session")
+
+    set_inputs(monkeypatch, "2", "3", "1999-01-01")
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+
+    assert "No sessions found" in captured.out
+
+
+def test_terminal_ui_shows_error_for_invalid_main_menu_option(
+    monkeypatch,
+    capsys,
+):
+    set_inputs(monkeypatch, "99")
+
+    TerminalUI(SessionTracker(), FakeStorage()).run()
+
+    captured = capsys.readouterr()
+
+    assert "Invalid option" in captured.out
+
+
+def test_terminal_ui_shows_error_for_invalid_search_menu_option(
+    monkeypatch,
+    capsys,
+):
+    set_inputs(monkeypatch, "2", "99")
+
+    TerminalUI(SessionTracker(), FakeStorage()).run()
+
+    captured = capsys.readouterr()
+
+    assert "Invalid option" in captured.out
