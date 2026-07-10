@@ -75,6 +75,16 @@ def test_set_sessions_sets_loaded_sessions():
     assert tracker.get_sessions() == [loaded_session]
 
 
+def test_set_sessions_replaces_existing_sessions():
+    tracker = SessionTracker()
+    tracker.add_session("Existing session")
+    loaded_session = CodingSession(5, "2026-07-08", "Loaded session")
+
+    tracker.set_sessions([loaded_session])
+
+    assert tracker.get_sessions() == [loaded_session]
+
+
 def test_add_session_uses_highest_existing_session_number():
     tracker = SessionTracker()
     loaded_sessions = [
