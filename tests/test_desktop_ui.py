@@ -155,25 +155,23 @@ def test_find_dialog_limits_date_input_to_eight_digits(app):
     assert dialog.date_input.text() == "2026-07-08"
 
 
-def test_find_dialog_finds_session_by_number_and_clears_other_inputs(app):
+def test_find_dialog_finds_session_with_number_only(app):
     tracker = SessionTracker()
     tracker.add_session("First note")
+    tracker.add_session("Second note")
     ui = DesktopUI()
     ui.tracker = tracker
     dialog = FindDialog(ui)
 
-    dialog.note_search_input.setText("First")
-    dialog.date_input.setText("2026-07-08")
     dialog.number_input.setText("1")
-    dialog.find_number_button.click()
+    dialog.find_sessions_button.click()
 
-    assert dialog.note_search_input.text() == ""
-    assert dialog.date_input.text() == ""
     assert "#1" in dialog.result_label.text()
     assert "First note" in dialog.result_label.text()
+    assert "Second note" not in dialog.result_label.text()
 
 
-def test_find_dialog_finds_sessions_by_note_and_clears_other_inputs(app):
+def test_find_dialog_finds_sessions_with_note_only(app):
     tracker = SessionTracker()
     tracker.add_session("Worked on backend search")
     tracker.add_session("Learned JSON")
@@ -181,32 +179,86 @@ def test_find_dialog_finds_sessions_by_note_and_clears_other_inputs(app):
     ui.tracker = tracker
     dialog = FindDialog(ui)
 
-    dialog.number_input.setText("1")
     dialog.note_search_input.setText("BACKEND")
-    dialog.date_input.setText("2026-07-08")
-    dialog.find_note_button.click()
+    dialog.find_sessions_button.click()
 
-    assert dialog.number_input.text() == ""
-    assert dialog.date_input.text() == ""
     assert "Worked on backend search" in dialog.result_label.text()
     assert "Learned JSON" not in dialog.result_label.text()
 
 
-def test_find_dialog_finds_sessions_by_date_and_clears_other_inputs(app):
+def test_find_dialog_finds_sessions_with_date_only(app):
     tracker = SessionTracker()
-    session = tracker.add_session("Today note")
+    tracker.set_sessions([
+        CodingSession(1, "2026-07-08", "First date"),
+        CodingSession(2, "2026-07-09", "Second date"),
+    ])
     ui = DesktopUI()
     ui.tracker = tracker
     dialog = FindDialog(ui)
 
-    dialog.number_input.setText("1")
-    dialog.note_search_input.setText("Today")
-    dialog.date_input.setText(session.get_date())
-    dialog.find_date_button.click()
+    dialog.date_input.setText("2026-07-09")
+    dialog.find_sessions_button.click()
 
-    assert dialog.number_input.text() == ""
-    assert dialog.note_search_input.text() == ""
-    assert "Today note" in dialog.result_label.text()
+    assert "Second date" in dialog.result_label.text()
+    assert "First date" not in dialog.result_label.text()
+
+
+def test_find_dialog_combines_two_search_values(app):
+    tracker = SessionTracker()
+    tracker.set_sessions([
+        CodingSession(1, "2026-07-08", "Backend work"),
+        CodingSession(2, "2026-07-09", "Backend tests"),
+        CodingSession(3, "2026-07-09", "Learned JSON"),
+    ])
+    ui = DesktopUI()
+    ui.tracker = tracker
+    dialog = FindDialog(ui)
+
+    dialog.note_search_input.setText("backend")
+    dialog.date_input.setText("2026-07-09")
+    dialog.find_sessions_button.click()
+
+    assert "Backend tests" in dialog.result_label.text()
+    assert "Backend work" not in dialog.result_label.text()
+    assert "Learned JSON" not in dialog.result_label.text()
+
+
+def test_find_dialog_combines_all_three_search_values(app):
+    tracker = SessionTracker()
+    tracker.set_sessions([
+        CodingSession(1, "2026-07-09", "Backend tests"),
+        CodingSession(2, "2026-07-09", "Backend tests"),
+    ])
+    ui = DesktopUI()
+    ui.tracker = tracker
+    dialog = FindDialog(ui)
+
+    dialog.number_input.setText("2")
+    dialog.note_search_input.setText("backend")
+    dialog.date_input.setText("2026-07-09")
+    dialog.find_sessions_button.click()
+
+    assert "#2" in dialog.result_label.text()
+    assert "#1" not in dialog.result_label.text()
+
+
+def test_find_dialog_requires_at_least_one_search_value(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == "Please enter at least one search value."
+
+
+def test_find_dialog_rejects_non_numeric_session_number(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+
+    dialog.number_input.setText("not-a-number")
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == "Please enter a valid session number."
 
 
 def test_desktop_widget_buttons_have_style_object_names(app):

@@ -217,41 +217,36 @@ class FindDialog(QDialog):
         self.setWindowTitle("Find sessions")
 
         self.number_input = QLineEdit()
-        self.number_input.setPlaceholderText("Session number")
-        self.find_number_button = QPushButton("Find number")
+        self.number_input.setPlaceholderText("Session number (optional)")
 
         self.note_search_input = QLineEdit()
-        self.note_search_input.setPlaceholderText("Note keyword")
-        self.find_note_button = QPushButton("Find note")
+        self.note_search_input.setPlaceholderText("Note keyword (optional)")
 
         self.date_input = QLineEdit()
-        self.date_input.setPlaceholderText("YYYY-MM-DD")
+        self.date_input.setPlaceholderText("YYYY-MM-DD (optional)")
         self.is_formatting_date_input = False
-        self.find_date_button = QPushButton("Find date")
 
-        self.result_label = QLabel("Enter a session number, note keyword, or date.")
+        self.find_sessions_button = QPushButton("Find sessions")
+
+        self.result_label = QLabel("Enter one or more search values.")
         self.result_label.setWordWrap(True)
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Find by number"))
+        layout.addWidget(QLabel("Session number"))
         layout.addWidget(self.number_input)
-        layout.addWidget(self.find_number_button)
-        layout.addWidget(QLabel("Find by note"))
+        layout.addWidget(QLabel("Note keyword"))
         layout.addWidget(self.note_search_input)
-        layout.addWidget(self.find_note_button)
-        layout.addWidget(QLabel("Find by date"))
+        layout.addWidget(QLabel("Date"))
         layout.addWidget(self.date_input)
-        layout.addWidget(self.find_date_button)
+        layout.addWidget(self.find_sessions_button)
         layout.addWidget(self.result_label)
         self.setLayout(layout)
 
-        self.number_input.returnPressed.connect(self.find_by_number)
-        self.note_search_input.returnPressed.connect(self.find_by_note)
+        self.number_input.returnPressed.connect(self.find_sessions)
+        self.note_search_input.returnPressed.connect(self.find_sessions)
         self.date_input.textEdited.connect(self.format_date_input)
-        self.date_input.returnPressed.connect(self.find_by_date)
-        self.find_number_button.clicked.connect(self.find_by_number)
-        self.find_note_button.clicked.connect(self.find_by_note)
-        self.find_date_button.clicked.connect(self.find_by_date)
+        self.date_input.returnPressed.connect(self.find_sessions)
+        self.find_sessions_button.clicked.connect(self.find_sessions)
 
     def format_date_input(self, text):
         if self.is_formatting_date_input:
@@ -271,42 +266,44 @@ class FindDialog(QDialog):
         self.date_input.setCursorPosition(len(formatted_date))
         self.is_formatting_date_input = False
 
-    def find_by_number(self):
-        self.note_search_input.clear()
-        self.date_input.clear()
+    def find_sessions(self):
+        number_text = self.number_input.text().strip()
+        note_keyword = self.note_search_input.text().lower().strip()
+        target_date = self.date_input.text().strip()
 
-        try:
-            session_number = int(self.number_input.text())
-        except ValueError:
-            self.result_label.setText("Please enter a valid session number.")
+        if not number_text and not note_keyword and not target_date:
+            self.result_label.setText("Please enter at least one search value.")
             return
 
-        session = self.tracker.get_session_by_number(session_number)
-        if session is None:
-            self.result_label.setText("No session found for that number.")
+        session_number = None
+        if number_text:
+            try:
+                session_number = int(number_text)
+            except ValueError:
+                self.result_label.setText("Please enter a valid session number.")
+                return
+
+        matching_sessions = []
+
+        for session in self.tracker.get_sessions():
+            if session_number is not None and session.get_session_number() != session_number:
+                continue
+
+            if note_keyword and note_keyword not in session.get_note().lower():
+                continue
+
+            if target_date and session.get_date() != target_date:
+                continue
+
+            matching_sessions.append(session)
+
+        if not matching_sessions:
+            self.result_label.setText("No sessions found.")
             return
 
-        self.result_label.setText(self.format_session(session))
-
-    def find_by_note(self):
-        self.number_input.clear()
-        self.date_input.clear()
-        sessions = self.tracker.get_sessions_by_note(self.note_search_input.text())
-        if not sessions:
-            self.result_label.setText("No sessions found for that note.")
-            return
-
-        self.result_label.setText("\n".join(self.format_session(session) for session in sessions))
-
-    def find_by_date(self):
-        self.number_input.clear()
-        self.note_search_input.clear()
-        sessions = self.tracker.get_sessions_by_date(self.date_input.text())
-        if not sessions:
-            self.result_label.setText("No sessions found for that date.")
-            return
-
-        self.result_label.setText("\n".join(self.format_session(session) for session in sessions))
+        self.result_label.setText(
+            "\n".join(self.format_session(session) for session in matching_sessions)
+        )
 
     def format_session(self, session):
         return f"#{session.get_session_number()} | {session.get_date()} | {session.get_note()}"
