@@ -59,7 +59,10 @@ class CodingSessionWidget(QWidget):
         self.last_saved_label = QLabel("Last saved: none")
         self.last_saved_label.setObjectName("dateLabel")
         self.last_saved_label.setWordWrap(False)
-        self.last_saved_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.last_saved_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
 
         self.note_input = QLineEdit()
         self.note_input.setPlaceholderText("Write a session note")
@@ -286,7 +289,10 @@ class FindDialog(QDialog):
         matching_sessions = []
 
         for session in self.tracker.get_sessions():
-            if session_number is not None and session.get_session_number() != session_number:
+            if (
+                session_number is not None
+                and session.get_session_number() != session_number
+            ):
                 continue
 
             if note_keyword and note_keyword not in session.get_note().lower():
@@ -306,7 +312,11 @@ class FindDialog(QDialog):
         )
 
     def format_session(self, session):
-        return f"#{session.get_session_number()} | {session.get_date()} | {session.get_note()}"
+        return (
+            f"#{session.get_session_number()} | "
+            f"{session.get_date()} | "
+            f"{session.get_note()}"
+        )
 
 
 class SettingsDialog(QDialog):
@@ -323,7 +333,9 @@ class SettingsDialog(QDialog):
         self.always_on_top_input.setChecked(desktop_ui.widget.always_on_top)
 
         self.position_input = QComboBox()
-        self.position_input.addItems(["top-right", "top-left", "bottom-right", "bottom-left"])
+        self.position_input.addItems(
+            ["top-right", "top-left", "bottom-right", "bottom-left"]
+        )
         self.position_input.setCurrentText(desktop_ui.widget.position)
 
         self.opacity_input = QComboBox()
@@ -372,7 +384,11 @@ class DesktopUI:
         self.storage = storage
         self.settings_dialog = None
         self.find_dialog = None
-        self.widget = CodingSessionWidget(self.tracker, self.show_settings, self.save_sessions)
+        self.widget = CodingSessionWidget(
+            self.tracker,
+            self.show_settings,
+            self.save_sessions,
+        )
         self.widget.open_find = self.show_find
         self.mode = "Floating"
         self.opacity_label = "100%"
@@ -380,7 +396,9 @@ class DesktopUI:
         self.tray_icon = self.create_tray_icon()
 
     def create_tray_icon(self):
-        icon = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DialogApplyButton)
+        icon = QApplication.style().standardIcon(
+            QStyle.StandardPixmap.SP_DialogApplyButton
+        )
         tray_icon = QSystemTrayIcon(icon, QApplication.instance())
         tray_icon.setToolTip("Coding Session Tracker")
 
