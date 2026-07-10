@@ -11,6 +11,7 @@ class TerminalUI:
     def run(self):
         print("1 - Add session")
         print("2 - Search sessions")
+        print("3 - Update session note")
 
         option = input("Enter option: ")
 
@@ -18,9 +19,12 @@ class TerminalUI:
             self.add_session()
         elif option == "2":
             self.search_menu()
+        elif option == "3":
+            self.handle_update_session()
         else:
             print("Invalid option")
 
+    #ADD SESSION
     def add_session(self):
         note = input("Session note: ")
 
@@ -34,6 +38,7 @@ class TerminalUI:
         except EmptyNoteError:
             print("Please enter a session note")
 
+    #MENU
     def search_menu(self):
         print("1 - Search by number")
         print("2 - Search by note")
@@ -60,6 +65,7 @@ class TerminalUI:
         else:
             print("Invalid option")
 
+    #SEARCH
     def search_session_by_number(self, number):
         session = self.session_tracker.get_session_by_number(number)
 
@@ -77,6 +83,7 @@ class TerminalUI:
         sessions = self.session_tracker.get_sessions_by_date(target_date)
         self.show_sessions(sessions)
 
+    #SHOW
     def show_sessions(self, sessions):
         if not sessions:
             print("No sessions found")
@@ -96,3 +103,36 @@ class TerminalUI:
         print(f"Session {session.get_session_number()}")
         print(f"Date: {session.get_date()}")
         print(f"Note: {session.get_note()}")
+
+    #UPDATE
+    def handle_update_session(self):
+        try:
+            session_number = int(
+                input("Enter session number: ")
+            )
+        except ValueError:
+            print("Invalid session number")
+            return
+
+        new_note = input("Enter new note: ")
+
+        try:
+            session = self.session_tracker.update_session_note(
+                session_number,
+                new_note
+            )
+        except EmptyNoteError:
+            print("Please enter a session note")
+            return
+
+        if session is None:
+            print("Session not found")
+            return
+
+        self.storage.save_sessions(
+            self.session_tracker.get_sessions()
+        )
+
+        print("Session updated")
+        self.show_session(session)
+
