@@ -1,5 +1,7 @@
 class EmptyNoteError(ValueError):
-    pass
+    def __init__(self):
+        super().__init__("Please enter a session note")
+
 
 class CodingSession:
 

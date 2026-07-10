@@ -1,7 +1,5 @@
 from datetime import date
 
-from pygments import highlight
-
 from backend.coding_session import CodingSession
 
 

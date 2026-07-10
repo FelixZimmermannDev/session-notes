@@ -20,7 +20,7 @@ def test_note_is_stripped_on_create():
 
 
 def test_empty_note_is_not_allowed():
-    with pytest.raises(EmptyNoteError):
+    with pytest.raises(EmptyNoteError, match="Please enter a session note"):
         CodingSession(1, "2026-07-08", "")
 
 
