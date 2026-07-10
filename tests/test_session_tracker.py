@@ -96,3 +96,39 @@ def test_add_session_uses_highest_existing_session_number():
     new_session = tracker.add_session("New session")
 
     assert new_session.get_session_number() == 6
+
+def test_get_sessions_by_note_returns_matching_sessions():
+    tracker = SessionTracker()
+    matching_session = tracker.add_session("Worked on backend")
+    tracker.add_session("Learned JSON")
+
+    result = tracker.get_sessions_by_note("backend")
+
+    assert result == [matching_session]
+
+
+def test_get_sessions_by_note_is_case_insensitive():
+    tracker = SessionTracker()
+    session = tracker.add_session("OOP gelernt")
+
+    result = tracker.get_sessions_by_note("oop")
+
+    assert result == [session]
+
+
+def test_get_sessions_by_note_returns_empty_list_when_missing():
+    tracker = SessionTracker()
+    tracker.add_session("Worked on backend")
+
+    result = tracker.get_sessions_by_note("desktop")
+
+    assert result == []
+
+
+def test_get_sessions_by_note_returns_empty_list_for_blank_keyword():
+    tracker = SessionTracker()
+    tracker.add_session("Worked on backend")
+
+    result = tracker.get_sessions_by_note("   ")
+
+    assert result == []

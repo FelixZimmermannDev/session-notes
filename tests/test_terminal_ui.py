@@ -12,8 +12,13 @@ class FakeStorage:
         self.save_call_count += 1
 
 
+def set_inputs(monkeypatch, *answers):
+    answers_iterator = iter(answers)
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers_iterator))
+
+
 def test_terminal_ui_logs_session_note(monkeypatch, capsys):
-    monkeypatch.setattr("builtins.input", lambda prompt: "Worked on terminal UI")
+    set_inputs(monkeypatch, "1", "Worked on terminal UI")
     storage = FakeStorage()
 
     ui = TerminalUI(SessionTracker(), storage)
@@ -25,7 +30,7 @@ def test_terminal_ui_logs_session_note(monkeypatch, capsys):
 
 
 def test_terminal_ui_saves_sessions_to_storage(monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda prompt: "Stored terminal note")
+    set_inputs(monkeypatch, "1", "Stored terminal note")
     storage = FakeStorage()
 
     ui = TerminalUI(SessionTracker(), storage)
@@ -37,7 +42,7 @@ def test_terminal_ui_saves_sessions_to_storage(monkeypatch):
 
 
 def test_terminal_ui_shows_error_for_empty_note(monkeypatch, capsys):
-    monkeypatch.setattr("builtins.input", lambda prompt: "")
+    set_inputs(monkeypatch, "1", "")
     storage = FakeStorage()
 
     ui = TerminalUI(SessionTracker(), storage)
@@ -48,7 +53,7 @@ def test_terminal_ui_shows_error_for_empty_note(monkeypatch, capsys):
 
 
 def test_terminal_ui_does_not_save_empty_note(monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda prompt: "")
+    set_inputs(monkeypatch, "1", "")
     storage = FakeStorage()
 
     ui = TerminalUI(SessionTracker(), storage)
@@ -56,3 +61,48 @@ def test_terminal_ui_does_not_save_empty_note(monkeypatch):
 
     assert storage.save_call_count == 0
     assert storage.saved_sessions is None
+
+
+def test_terminal_ui_searches_session_by_number(monkeypatch, capsys):
+    tracker = SessionTracker()
+    tracker.add_session("Find this session")
+    set_inputs(monkeypatch, "2", "1", "1")
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+    assert "Session 1" in captured.out
+    assert "Note: Find this session" in captured.out
+
+
+def test_terminal_ui_shows_error_for_invalid_session_number(monkeypatch, capsys):
+    set_inputs(monkeypatch, "2", "1", "not-a-number")
+
+    TerminalUI(SessionTracker(), FakeStorage()).run()
+
+    captured = capsys.readouterr()
+    assert "Invalid session number" in captured.out
+
+
+def test_terminal_ui_searches_sessions_by_note(monkeypatch, capsys):
+    tracker = SessionTracker()
+    tracker.add_session("Worked on backend")
+    tracker.add_session("Learned JSON")
+    set_inputs(monkeypatch, "2", "2", "BACKEND")
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+    assert "Note: Worked on backend" in captured.out
+    assert "Learned JSON" not in captured.out
+
+
+def test_terminal_ui_searches_sessions_by_date(monkeypatch, capsys):
+    tracker = SessionTracker()
+    session = tracker.add_session("Today session")
+    set_inputs(monkeypatch, "2", "3", session.get_date())
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+    assert "Note: Today session" in captured.out

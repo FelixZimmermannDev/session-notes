@@ -220,18 +220,25 @@ class FindDialog(QDialog):
         self.number_input.setPlaceholderText("Session number")
         self.find_number_button = QPushButton("Find number")
 
+        self.note_search_input = QLineEdit()
+        self.note_search_input.setPlaceholderText("Note keyword")
+        self.find_note_button = QPushButton("Find note")
+
         self.date_input = QLineEdit()
         self.date_input.setPlaceholderText("YYYY-MM-DD")
         self.is_formatting_date_input = False
         self.find_date_button = QPushButton("Find date")
 
-        self.result_label = QLabel("Enter a session number or date.")
+        self.result_label = QLabel("Enter a session number, note keyword, or date.")
         self.result_label.setWordWrap(True)
 
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Find by number"))
         layout.addWidget(self.number_input)
         layout.addWidget(self.find_number_button)
+        layout.addWidget(QLabel("Find by note"))
+        layout.addWidget(self.note_search_input)
+        layout.addWidget(self.find_note_button)
         layout.addWidget(QLabel("Find by date"))
         layout.addWidget(self.date_input)
         layout.addWidget(self.find_date_button)
@@ -239,9 +246,11 @@ class FindDialog(QDialog):
         self.setLayout(layout)
 
         self.number_input.returnPressed.connect(self.find_by_number)
+        self.note_search_input.returnPressed.connect(self.find_by_note)
         self.date_input.textEdited.connect(self.format_date_input)
         self.date_input.returnPressed.connect(self.find_by_date)
         self.find_number_button.clicked.connect(self.find_by_number)
+        self.find_note_button.clicked.connect(self.find_by_note)
         self.find_date_button.clicked.connect(self.find_by_date)
 
     def format_date_input(self, text):
@@ -263,6 +272,7 @@ class FindDialog(QDialog):
         self.is_formatting_date_input = False
 
     def find_by_number(self):
+        self.note_search_input.clear()
         self.date_input.clear()
 
         try:
@@ -278,8 +288,19 @@ class FindDialog(QDialog):
 
         self.result_label.setText(self.format_session(session))
 
+    def find_by_note(self):
+        self.number_input.clear()
+        self.date_input.clear()
+        sessions = self.tracker.get_sessions_by_note(self.note_search_input.text())
+        if not sessions:
+            self.result_label.setText("No sessions found for that note.")
+            return
+
+        self.result_label.setText("\n".join(self.format_session(session) for session in sessions))
+
     def find_by_date(self):
         self.number_input.clear()
+        self.note_search_input.clear()
         sessions = self.tracker.get_sessions_by_date(self.date_input.text())
         if not sessions:
             self.result_label.setText("No sessions found for that date.")

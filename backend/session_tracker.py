@@ -45,6 +45,21 @@ class SessionTracker:
 
         return matching_sessions
 
+    def get_sessions_by_note(self, keyword):
+        matching_sessions = []
+        cleaned_keyword = keyword.lower().strip()
+
+        if not cleaned_keyword:
+            return []
+
+        for session in self.sessions:
+            note = session.get_note().lower()
+
+            if cleaned_keyword in note:
+                matching_sessions.append(session)
+
+        return matching_sessions
+
     #JSON
     def set_sessions(self, sessions):
         self.sessions = sessions

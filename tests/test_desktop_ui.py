@@ -155,23 +155,44 @@ def test_find_dialog_limits_date_input_to_eight_digits(app):
     assert dialog.date_input.text() == "2026-07-08"
 
 
-def test_find_dialog_finds_session_by_number_and_clears_date_input(app):
+def test_find_dialog_finds_session_by_number_and_clears_other_inputs(app):
     tracker = SessionTracker()
     tracker.add_session("First note")
     ui = DesktopUI()
     ui.tracker = tracker
     dialog = FindDialog(ui)
 
+    dialog.note_search_input.setText("First")
     dialog.date_input.setText("2026-07-08")
     dialog.number_input.setText("1")
     dialog.find_number_button.click()
 
+    assert dialog.note_search_input.text() == ""
     assert dialog.date_input.text() == ""
     assert "#1" in dialog.result_label.text()
     assert "First note" in dialog.result_label.text()
 
 
-def test_find_dialog_finds_sessions_by_date_and_clears_number_input(app):
+def test_find_dialog_finds_sessions_by_note_and_clears_other_inputs(app):
+    tracker = SessionTracker()
+    tracker.add_session("Worked on backend search")
+    tracker.add_session("Learned JSON")
+    ui = DesktopUI()
+    ui.tracker = tracker
+    dialog = FindDialog(ui)
+
+    dialog.number_input.setText("1")
+    dialog.note_search_input.setText("BACKEND")
+    dialog.date_input.setText("2026-07-08")
+    dialog.find_note_button.click()
+
+    assert dialog.number_input.text() == ""
+    assert dialog.date_input.text() == ""
+    assert "Worked on backend search" in dialog.result_label.text()
+    assert "Learned JSON" not in dialog.result_label.text()
+
+
+def test_find_dialog_finds_sessions_by_date_and_clears_other_inputs(app):
     tracker = SessionTracker()
     session = tracker.add_session("Today note")
     ui = DesktopUI()
@@ -179,10 +200,12 @@ def test_find_dialog_finds_sessions_by_date_and_clears_number_input(app):
     dialog = FindDialog(ui)
 
     dialog.number_input.setText("1")
+    dialog.note_search_input.setText("Today")
     dialog.date_input.setText(session.get_date())
     dialog.find_date_button.click()
 
     assert dialog.number_input.text() == ""
+    assert dialog.note_search_input.text() == ""
     assert "Today note" in dialog.result_label.text()
 
 
