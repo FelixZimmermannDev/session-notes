@@ -58,3 +58,37 @@ def test_from_dict_creates_coding_session():
     assert session.get_session_number() == 1
     assert session.get_date() == "2026-07-08"
     assert session.get_note() == "OOP gelernt"
+
+def test_update_note_replaces_existing_note():
+    session = CodingSession(
+        1,
+        "2026-07-08",
+        "Old note"
+    )
+
+    session.update_note("New note")
+
+    assert session.get_note() == "New note"
+
+def test_update_note_strips_new_note():
+    session = CodingSession(
+        1,
+        "2026-07-08",
+        "Old note"
+    )
+
+    session.update_note("   New note   ")
+
+    assert session.get_note() == "New note"
+
+def test_update_note_rejects_empty_note_and_keeps_old_note():
+    session = CodingSession(
+        1,
+        "2026-07-08",
+        "Old note"
+    )
+
+    with pytest.raises(EmptyNoteError):
+        session.update_note("   ")
+
+    assert session.get_note() == "Old note"

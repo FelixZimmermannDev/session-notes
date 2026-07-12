@@ -1,4 +1,6 @@
 from datetime import date
+import pytest
+from backend.coding_session import EmptyNoteError
 
 from backend.session_tracker import SessionTracker
 from backend.coding_session import CodingSession
@@ -132,3 +134,44 @@ def test_get_sessions_by_note_returns_empty_list_for_blank_keyword():
     result = tracker.get_sessions_by_note("   ")
 
     assert result == []
+
+def test_update_session_note_changes_existing_session():
+    tracker = SessionTracker()
+    session = tracker.add_session("Old note")
+
+    result = tracker.update_session_note(
+        session.get_session_number(),
+        "New note"
+    )
+
+    assert result is session
+    assert session.get_note() == "New note"
+
+def test_update_session_note_changes_session_inside_tracker():
+    tracker = SessionTracker()
+    tracker.add_session("Old note")
+
+    tracker.update_session_note(1, "New note")
+
+    stored_session = tracker.get_session_by_number(1)
+
+    assert stored_session.get_note() == "New note"
+
+def test_update_session_note_returns_none_when_session_is_missing():
+    tracker = SessionTracker()
+
+    result = tracker.update_session_note(
+        99,
+        "New note"
+    )
+
+    assert result is None
+
+def test_update_session_note_rejects_empty_note():
+    tracker = SessionTracker()
+    session = tracker.add_session("Old note")
+
+    with pytest.raises(EmptyNoteError):
+        tracker.update_session_note(1, "   ")
+
+    assert session.get_note() == "Old note"
