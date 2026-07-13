@@ -10,7 +10,6 @@ from frontend.desktop_ui import (
     DesktopUI,
     FindDialog,
     SettingsDialog,
-    UpdateDialog,
 )
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
 
@@ -175,6 +174,8 @@ def test_find_dialog_finds_session_with_number_only(app):
     assert "#1" in dialog.result_label.text()
     assert "First note" in dialog.result_label.text()
     assert "Second note" not in dialog.result_label.text()
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.update_selected_button.isHidden() is False
 
 
 def test_find_dialog_finds_sessions_with_note_only(app):
@@ -190,6 +191,8 @@ def test_find_dialog_finds_sessions_with_note_only(app):
 
     assert "Worked on backend search" in dialog.result_label.text()
     assert "Learned JSON" not in dialog.result_label.text()
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.update_selected_button.isHidden() is False
 
 
 def test_find_dialog_finds_sessions_with_date_only(app):
@@ -207,6 +210,8 @@ def test_find_dialog_finds_sessions_with_date_only(app):
 
     assert "Second date" in dialog.result_label.text()
     assert "First date" not in dialog.result_label.text()
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.update_selected_button.isHidden() is False
 
 
 def test_find_dialog_combines_two_search_values(app):
@@ -273,14 +278,13 @@ def test_desktop_widget_buttons_have_style_object_names(app):
 
     assert widget.save_note_button.objectName() == "saveNoteButton"
     assert widget.find_button.objectName() == "findButton"
-    assert widget.update_button.objectName() == "updateButton"
+    assert widget.find_button.text() == "Find / update"
     assert widget.settings_button.objectName() == "settingsButton"
     assert widget.hide_button.objectName() == "windowControlButton"
     assert widget.close_button.objectName() == "closeButton"
     assert "#3498db" in DARK_STYLE
     assert "#2563eb" in LIGHT_STYLE
     assert "findButton" in DARK_STYLE
-    assert "updateButton" in DARK_STYLE
     assert "settingsButton" in LIGHT_STYLE
 
 
@@ -376,25 +380,22 @@ def test_widget_find_button_opens_find_dialog(app):
     assert ui.find_dialog.isVisible() is True
 
 
-def test_widget_update_button_opens_update_dialog(app):
-    ui = DesktopUI()
-
-    ui.widget.update_button.click()
-
-    assert ui.update_dialog is not None
-    assert ui.update_dialog.isVisible() is True
-
-
-def test_update_dialog_updates_session_and_saves_sessions(app):
+def test_find_dialog_updates_session_found_by_number_and_saves(app):
     tracker = SessionTracker()
     session = tracker.add_session("Old note")
     storage = FakeStorage()
     ui = DesktopUI(tracker, storage)
-    dialog = UpdateDialog(ui)
+    dialog = FindDialog(ui)
     dialog.number_input.setText("1")
-    dialog.note_input.setText("  New note  ")
 
-    dialog.update_button.click()
+    dialog.find_sessions_button.click()
+    dialog.update_selected_button.click()
+
+    assert "Old note" in dialog.current_session_label.text()
+    assert dialog.update_panel.isHidden() is False
+
+    dialog.new_note_input.setText("  New note  ")
+    dialog.save_update_button.click()
 
     assert session.get_note() == "New note"
     assert storage.save_call_count == 1
@@ -402,42 +403,59 @@ def test_update_dialog_updates_session_and_saves_sessions(app):
     assert dialog.result_label.text() == "Session #1 updated: New note"
 
 
-def test_update_dialog_rejects_invalid_session_number(app):
+def test_find_dialog_can_choose_session_from_multiple_results_to_update(app):
+    tracker = SessionTracker()
+    first_session = CodingSession(1, "2026-07-09", "First note")
+    second_session = CodingSession(2, "2026-07-09", "Second note")
+    tracker.set_sessions([first_session, second_session])
     storage = FakeStorage()
-    ui = DesktopUI(SessionTracker(), storage)
-    dialog = UpdateDialog(ui)
-    dialog.number_input.setText("not-a-number")
-    dialog.note_input.setText("New note")
+    ui = DesktopUI(tracker, storage)
+    dialog = FindDialog(ui)
+    dialog.date_input.setText("2026-07-09")
 
-    dialog.update_button.click()
+    dialog.find_sessions_button.click()
+    dialog.result_selector.setCurrentIndex(1)
+    dialog.update_selected_button.click()
+    dialog.new_note_input.setText("Updated second note")
+    dialog.save_update_button.click()
 
-    assert dialog.result_label.text() == "Please enter a valid session number."
-    assert storage.save_call_count == 0
-
-
-def test_update_dialog_reports_missing_session(app):
-    storage = FakeStorage()
-    ui = DesktopUI(SessionTracker(), storage)
-    dialog = UpdateDialog(ui)
-    dialog.number_input.setText("99")
-    dialog.note_input.setText("New note")
-
-    dialog.update_button.click()
-
-    assert dialog.result_label.text() == "Session not found."
-    assert storage.save_call_count == 0
+    assert first_session.get_note() == "First note"
+    assert second_session.get_note() == "Updated second note"
+    assert storage.save_call_count == 1
 
 
-def test_update_dialog_rejects_empty_note_and_keeps_old_note(app):
+def test_find_dialog_back_buttons_move_between_search_results_and_update(app):
+    tracker = SessionTracker()
+    tracker.add_session("Backend work")
+    ui = DesktopUI(tracker, FakeStorage())
+    dialog = FindDialog(ui)
+    dialog.note_search_input.setText("backend")
+
+    dialog.find_sessions_button.click()
+    dialog.update_selected_button.click()
+    dialog.update_back_button.click()
+
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.update_panel.isHidden() is True
+
+    dialog.results_back_button.click()
+
+    assert dialog.search_panel.isHidden() is False
+    assert dialog.result_panel.isHidden() is True
+
+
+def test_find_dialog_rejects_empty_update_and_keeps_old_note(app):
     tracker = SessionTracker()
     session = tracker.add_session("Old note")
     storage = FakeStorage()
     ui = DesktopUI(tracker, storage)
-    dialog = UpdateDialog(ui)
+    dialog = FindDialog(ui)
     dialog.number_input.setText("1")
-    dialog.note_input.setText("   ")
+    dialog.find_sessions_button.click()
+    dialog.update_selected_button.click()
+    dialog.new_note_input.setText("   ")
 
-    dialog.update_button.click()
+    dialog.save_update_button.click()
 
     assert dialog.result_label.text() == "Please enter a session note"
     assert session.get_note() == "Old note"

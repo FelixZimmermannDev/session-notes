@@ -32,7 +32,6 @@ class CodingSessionWidget(QWidget):
         self.open_settings = open_settings
         self.save_sessions = save_sessions
         self.open_find = None
-        self.open_update = None
         self.today = date.today().isoformat()
         self.position = "top-right"
         self.always_on_top = True
@@ -69,10 +68,8 @@ class CodingSessionWidget(QWidget):
         self.note_input.setPlaceholderText("Write a session note")
         self.save_note_button = QPushButton("Save note")
         self.save_note_button.setObjectName("saveNoteButton")
-        self.find_button = QPushButton("Find")
+        self.find_button = QPushButton("Find / update")
         self.find_button.setObjectName("findButton")
-        self.update_button = QPushButton("Update")
-        self.update_button.setObjectName("updateButton")
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.title_label)
@@ -84,7 +81,6 @@ class CodingSessionWidget(QWidget):
         action_layout = QHBoxLayout()
         action_layout.addWidget(self.save_note_button)
         action_layout.addWidget(self.find_button)
-        action_layout.addWidget(self.update_button)
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(14, 14, 14, 14)
@@ -100,7 +96,6 @@ class CodingSessionWidget(QWidget):
         self.note_input.returnPressed.connect(self.save_note)
         self.save_note_button.clicked.connect(self.save_note)
         self.find_button.clicked.connect(self.show_find_dialog)
-        self.update_button.clicked.connect(self.show_update_dialog)
         self.hide_button.clicked.connect(self.hide)
         self.close_button.clicked.connect(QApplication.quit)
         if self.open_settings is not None:
@@ -216,75 +211,15 @@ class CodingSessionWidget(QWidget):
         if self.open_find is not None:
             self.open_find()
 
-    def show_update_dialog(self):
-        if self.open_update is not None:
-            self.open_update()
-
-
-class UpdateDialog(QDialog):
-    def __init__(self, desktop_ui):
-        super().__init__(desktop_ui.widget)
-        self.desktop_ui = desktop_ui
-        self.tracker = desktop_ui.tracker
-        self.setWindowTitle("Update session")
-
-        self.number_input = QLineEdit()
-        self.number_input.setPlaceholderText("Session number")
-
-        self.note_input = QLineEdit()
-        self.note_input.setPlaceholderText("New session note")
-
-        self.update_button = QPushButton("Update session")
-        self.update_button.setObjectName("updateButton")
-        self.result_label = QLabel("Enter a session number and a new note.")
-        self.result_label.setWordWrap(True)
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Session number"))
-        layout.addWidget(self.number_input)
-        layout.addWidget(QLabel("New note"))
-        layout.addWidget(self.note_input)
-        layout.addWidget(self.update_button)
-        layout.addWidget(self.result_label)
-        self.setLayout(layout)
-
-        self.number_input.returnPressed.connect(self.update_session)
-        self.note_input.returnPressed.connect(self.update_session)
-        self.update_button.clicked.connect(self.update_session)
-
-    def update_session(self):
-        try:
-            session_number = int(self.number_input.text().strip())
-        except ValueError:
-            self.result_label.setText("Please enter a valid session number.")
-            return
-
-        try:
-            session = self.tracker.update_session_note(
-                session_number,
-                self.note_input.text(),
-            )
-        except EmptyNoteError as error:
-            self.result_label.setText(str(error))
-            return
-
-        if session is None:
-            self.result_label.setText("Session not found.")
-            return
-
-        self.desktop_ui.save_sessions()
-        self.result_label.setText(
-            f"Session #{session.get_session_number()} updated: "
-            f"{session.get_note()}"
-        )
-
 
 class FindDialog(QDialog):
     def __init__(self, desktop_ui):
         super().__init__(desktop_ui.widget)
         self.desktop_ui = desktop_ui
         self.tracker = desktop_ui.tracker
-        self.setWindowTitle("Find sessions")
+        self.setWindowTitle("Find / update sessions")
+        self.matching_sessions = []
+        self.selected_session_number = None
 
         self.number_input = QLineEdit()
         self.number_input.setPlaceholderText("Session number (optional)")
@@ -297,19 +232,69 @@ class FindDialog(QDialog):
         self.is_formatting_date_input = False
 
         self.find_sessions_button = QPushButton("Find sessions")
+        self.find_sessions_button.setObjectName("findButton")
+
+        self.search_panel = QWidget()
+        search_layout = QVBoxLayout()
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.addWidget(QLabel("Session number"))
+        search_layout.addWidget(self.number_input)
+        search_layout.addWidget(QLabel("Note keyword"))
+        search_layout.addWidget(self.note_search_input)
+        search_layout.addWidget(QLabel("Date"))
+        search_layout.addWidget(self.date_input)
+        search_layout.addWidget(self.find_sessions_button)
+        self.search_panel.setLayout(search_layout)
 
         self.result_label = QLabel("Enter one or more search values.")
         self.result_label.setWordWrap(True)
 
+        self.result_selector = QComboBox()
+        self.update_selected_button = QPushButton("Update selected")
+        self.update_selected_button.setObjectName("findButton")
+        self.results_back_button = QPushButton("Back")
+
+        result_actions = QHBoxLayout()
+        result_actions.addWidget(self.update_selected_button)
+        result_actions.addWidget(self.results_back_button)
+
+        self.result_panel = QWidget()
+        result_layout = QVBoxLayout()
+        result_layout.setContentsMargins(0, 0, 0, 0)
+        result_layout.addWidget(QLabel("Select a session"))
+        result_layout.addWidget(self.result_selector)
+        result_layout.addLayout(result_actions)
+        self.result_panel.setLayout(result_layout)
+        self.result_panel.hide()
+
+        self.current_session_label = QLabel()
+        self.current_session_label.setWordWrap(True)
+        self.new_note_input = QLineEdit()
+        self.new_note_input.setPlaceholderText("New session note")
+        self.save_update_button = QPushButton("Save update")
+        self.save_update_button.setObjectName("saveNoteButton")
+        self.update_back_button = QPushButton("Back")
+
+        update_actions = QHBoxLayout()
+        update_actions.addWidget(self.save_update_button)
+        update_actions.addWidget(self.update_back_button)
+
+        self.update_panel = QWidget()
+        update_layout = QVBoxLayout()
+        update_layout.setContentsMargins(0, 0, 0, 0)
+        update_layout.addWidget(QLabel("Current session"))
+        update_layout.addWidget(self.current_session_label)
+        update_layout.addWidget(QLabel("New note"))
+        update_layout.addWidget(self.new_note_input)
+        update_layout.addLayout(update_actions)
+        self.update_panel.setLayout(update_layout)
+        self.update_panel.hide()
+
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Session number"))
-        layout.addWidget(self.number_input)
-        layout.addWidget(QLabel("Note keyword"))
-        layout.addWidget(self.note_search_input)
-        layout.addWidget(QLabel("Date"))
-        layout.addWidget(self.date_input)
-        layout.addWidget(self.find_sessions_button)
+        layout.addWidget(self.search_panel)
         layout.addWidget(self.result_label)
+        layout.addWidget(self.result_panel)
+        layout.addWidget(self.update_panel)
         self.setLayout(layout)
 
         self.number_input.returnPressed.connect(self.find_sessions)
@@ -317,6 +302,11 @@ class FindDialog(QDialog):
         self.date_input.textEdited.connect(self.format_date_input)
         self.date_input.returnPressed.connect(self.find_sessions)
         self.find_sessions_button.clicked.connect(self.find_sessions)
+        self.update_selected_button.clicked.connect(self.begin_update)
+        self.results_back_button.clicked.connect(self.show_search_step)
+        self.new_note_input.returnPressed.connect(self.save_update)
+        self.save_update_button.clicked.connect(self.save_update)
+        self.update_back_button.clicked.connect(self.show_results_step)
 
     def format_date_input(self, text):
         if self.is_formatting_date_input:
@@ -374,9 +364,85 @@ class FindDialog(QDialog):
             self.result_label.setText("No sessions found.")
             return
 
+        self.matching_sessions = matching_sessions
+        self.show_results_step()
+
+    def show_search_step(self):
+        self.result_panel.hide()
+        self.update_panel.hide()
+        self.search_panel.show()
+        self.result_label.setText("Enter one or more search values.")
+
+    def show_results_step(self):
+        if not self.matching_sessions:
+            self.show_search_step()
+            return
+
+        selected_number = self.result_selector.currentData()
+        self.result_selector.clear()
+
+        for session in self.matching_sessions:
+            self.result_selector.addItem(
+                self.format_session(session),
+                session.get_session_number(),
+            )
+
+        if selected_number is not None:
+            for index in range(self.result_selector.count()):
+                if self.result_selector.itemData(index) == selected_number:
+                    self.result_selector.setCurrentIndex(index)
+                    break
+
         self.result_label.setText(
-            "\n".join(self.format_session(session) for session in matching_sessions)
+            "\n".join(
+                self.format_session(session)
+                for session in self.matching_sessions
+            )
         )
+        self.search_panel.hide()
+        self.update_panel.hide()
+        self.result_panel.show()
+
+    def begin_update(self):
+        session_number = self.result_selector.currentData()
+        session = self.tracker.get_session_by_number(session_number)
+
+        if session is None:
+            self.result_label.setText("Session not found.")
+            return
+
+        self.selected_session_number = session_number
+        self.current_session_label.setText(self.format_session(session))
+        self.new_note_input.clear()
+        self.result_label.setText(
+            f"Enter a new note for session #{session_number}."
+        )
+        self.search_panel.hide()
+        self.result_panel.hide()
+        self.update_panel.show()
+        self.new_note_input.setFocus()
+
+    def save_update(self):
+        try:
+            session = self.tracker.update_session_note(
+                self.selected_session_number,
+                self.new_note_input.text(),
+            )
+        except EmptyNoteError as error:
+            self.result_label.setText(str(error))
+            return
+
+        if session is None:
+            self.result_label.setText("Session not found.")
+            return
+
+        self.desktop_ui.save_sessions()
+        self.current_session_label.setText(self.format_session(session))
+        self.result_label.setText(
+            f"Session #{session.get_session_number()} updated: "
+            f"{session.get_note()}"
+        )
+        self.new_note_input.clear()
 
     def format_session(self, session):
         return (
@@ -451,14 +517,12 @@ class DesktopUI:
         self.storage = storage
         self.settings_dialog = None
         self.find_dialog = None
-        self.update_dialog = None
         self.widget = CodingSessionWidget(
             self.tracker,
             self.show_settings,
             self.save_sessions,
         )
         self.widget.open_find = self.show_find
-        self.widget.open_update = self.show_update
         self.mode = "Floating"
         self.opacity_label = "100%"
         self.theme = "Dark"
@@ -549,13 +613,6 @@ class DesktopUI:
         self.find_dialog.show()
         self.find_dialog.raise_()
         self.find_dialog.activateWindow()
-
-    def show_update(self):
-        if self.update_dialog is None or not self.update_dialog.isVisible():
-            self.update_dialog = UpdateDialog(self)
-        self.update_dialog.show()
-        self.update_dialog.raise_()
-        self.update_dialog.activateWindow()
 
     def run(self):
         self.set_mode("Floating")
