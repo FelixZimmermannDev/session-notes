@@ -1,3 +1,5 @@
+import pytest
+
 from backend.session_tracker import SessionTracker
 from frontend.terminal_ui import TerminalUI
 
@@ -194,7 +196,24 @@ def test_terminal_ui_updates_session_note(
 
     assert session.get_note() == "New note"
     assert "Session updated" in captured.out
+    assert "Session 1" in captured.out
+    assert f"Date: {session.get_date()}" in captured.out
     assert "Note: New note" in captured.out
+
+
+def test_terminal_ui_run_routes_to_update_session(monkeypatch, capsys):
+    tracker = SessionTracker()
+    session = tracker.add_session("Old note")
+    storage = FakeStorage()
+    set_inputs(monkeypatch, "3", "1", "New note")
+
+    TerminalUI(tracker, storage).run()
+
+    captured = capsys.readouterr()
+    assert session.get_note() == "New note"
+    assert storage.save_call_count == 1
+    assert "Session updated" in captured.out
+
 
 def test_terminal_ui_saves_updated_session(
     monkeypatch,
@@ -215,25 +234,31 @@ def test_terminal_ui_shows_message_when_update_session_is_missing(
     monkeypatch,
     capsys,
 ):
+    tracker = SessionTracker()
+    existing_session = tracker.add_session("Existing note")
     storage = FakeStorage()
 
     set_inputs(monkeypatch, "99", "New note")
 
-    ui = TerminalUI(SessionTracker(), storage)
+    ui = TerminalUI(tracker, storage)
     ui.handle_update_session()
 
     captured = capsys.readouterr()
 
     assert "Session not found" in captured.out
+    assert existing_session.get_note() == "Existing note"
     assert storage.save_call_count == 0
 
+
+@pytest.mark.parametrize("invalid_number", ["not-a-number", "", "   ", "1.5"])
 def test_terminal_ui_rejects_invalid_update_session_number(
     monkeypatch,
     capsys,
+    invalid_number,
 ):
     storage = FakeStorage()
 
-    set_inputs(monkeypatch, "not-a-number")
+    set_inputs(monkeypatch, invalid_number)
 
     ui = TerminalUI(SessionTracker(), storage)
     ui.handle_update_session()
@@ -243,15 +268,17 @@ def test_terminal_ui_rejects_invalid_update_session_number(
     assert "Invalid session number" in captured.out
     assert storage.save_call_count == 0
 
+@pytest.mark.parametrize("empty_note", ["", "   "])
 def test_terminal_ui_rejects_empty_updated_note(
     monkeypatch,
     capsys,
+    empty_note,
 ):
     tracker = SessionTracker()
     session = tracker.add_session("Old note")
     storage = FakeStorage()
 
-    set_inputs(monkeypatch, "1", "   ")
+    set_inputs(monkeypatch, "1", empty_note)
 
     ui = TerminalUI(tracker, storage)
     ui.handle_update_session()

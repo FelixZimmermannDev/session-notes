@@ -167,6 +167,20 @@ def test_update_session_note_returns_none_when_session_is_missing():
 
     assert result is None
 
+def test_update_session_note_does_not_modify_sessions_when_session_is_missing():
+    tracker = SessionTracker()
+    first_session = tracker.add_session("First note")
+    second_session = tracker.add_session("Second note")
+    sessions_before_update = list(tracker.get_sessions())
+
+    result = tracker.update_session_note(99, "New note")
+
+    assert result is None
+    assert tracker.get_sessions() == sessions_before_update
+    assert first_session.get_note() == "First note"
+    assert second_session.get_note() == "Second note"
+
+
 def test_update_session_note_rejects_empty_note():
     tracker = SessionTracker()
     session = tracker.add_session("Old note")

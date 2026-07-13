@@ -8,7 +8,7 @@ class SessionTracker:
     def __init__(self):
         self.sessions = []
 
-    #Add Session
+    #ADD SESSION
     def add_session(self, note):
         highest_session_number = 0
 
@@ -28,7 +28,7 @@ class SessionTracker:
     def get_sessions(self):
         return self.sessions
 
-    #Find Sessions
+    #FIND SESSION
     def get_session_by_number(self, session_number):
         for session in self.sessions:
             if session.get_session_number() == session_number:
@@ -59,6 +59,17 @@ class SessionTracker:
                 matching_sessions.append(session)
 
         return matching_sessions
+
+    #UPDATE SESSION
+    def update_session_note(self, session_number, new_note):
+        session = self.get_session_by_number(session_number)
+
+        if session is None:
+            return None
+
+        session.update_note(new_note)
+
+        return session
 
     #JSON
     def set_sessions(self, sessions):

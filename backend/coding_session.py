@@ -25,6 +25,9 @@ class CodingSession:
     def get_note(self):
         return self.note
 
+    def update_note(self, new_note):
+        self.note = self._clean_note(new_note)
+
     #Session Number
     def get_session_number(self):
         return self.session_number

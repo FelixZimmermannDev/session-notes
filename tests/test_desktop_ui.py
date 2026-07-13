@@ -5,7 +5,13 @@ from PySide6.QtWidgets import QApplication
 
 from backend.coding_session import CodingSession
 from backend.session_tracker import SessionTracker
-from frontend.desktop_ui import CodingSessionWidget, DesktopUI, FindDialog, SettingsDialog
+from frontend.desktop_ui import (
+    CodingSessionWidget,
+    DesktopUI,
+    FindDialog,
+    SettingsDialog,
+    UpdateDialog,
+)
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
 
 
@@ -267,12 +273,14 @@ def test_desktop_widget_buttons_have_style_object_names(app):
 
     assert widget.save_note_button.objectName() == "saveNoteButton"
     assert widget.find_button.objectName() == "findButton"
+    assert widget.update_button.objectName() == "updateButton"
     assert widget.settings_button.objectName() == "settingsButton"
     assert widget.hide_button.objectName() == "windowControlButton"
     assert widget.close_button.objectName() == "closeButton"
     assert "#3498db" in DARK_STYLE
     assert "#2563eb" in LIGHT_STYLE
     assert "findButton" in DARK_STYLE
+    assert "updateButton" in DARK_STYLE
     assert "settingsButton" in LIGHT_STYLE
 
 
@@ -366,3 +374,71 @@ def test_widget_find_button_opens_find_dialog(app):
 
     assert ui.find_dialog is not None
     assert ui.find_dialog.isVisible() is True
+
+
+def test_widget_update_button_opens_update_dialog(app):
+    ui = DesktopUI()
+
+    ui.widget.update_button.click()
+
+    assert ui.update_dialog is not None
+    assert ui.update_dialog.isVisible() is True
+
+
+def test_update_dialog_updates_session_and_saves_sessions(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Old note")
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    dialog = UpdateDialog(ui)
+    dialog.number_input.setText("1")
+    dialog.note_input.setText("  New note  ")
+
+    dialog.update_button.click()
+
+    assert session.get_note() == "New note"
+    assert storage.save_call_count == 1
+    assert storage.saved_sessions == [session]
+    assert dialog.result_label.text() == "Session #1 updated: New note"
+
+
+def test_update_dialog_rejects_invalid_session_number(app):
+    storage = FakeStorage()
+    ui = DesktopUI(SessionTracker(), storage)
+    dialog = UpdateDialog(ui)
+    dialog.number_input.setText("not-a-number")
+    dialog.note_input.setText("New note")
+
+    dialog.update_button.click()
+
+    assert dialog.result_label.text() == "Please enter a valid session number."
+    assert storage.save_call_count == 0
+
+
+def test_update_dialog_reports_missing_session(app):
+    storage = FakeStorage()
+    ui = DesktopUI(SessionTracker(), storage)
+    dialog = UpdateDialog(ui)
+    dialog.number_input.setText("99")
+    dialog.note_input.setText("New note")
+
+    dialog.update_button.click()
+
+    assert dialog.result_label.text() == "Session not found."
+    assert storage.save_call_count == 0
+
+
+def test_update_dialog_rejects_empty_note_and_keeps_old_note(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Old note")
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    dialog = UpdateDialog(ui)
+    dialog.number_input.setText("1")
+    dialog.note_input.setText("   ")
+
+    dialog.update_button.click()
+
+    assert dialog.result_label.text() == "Please enter a session note"
+    assert session.get_note() == "Old note"
+    assert storage.save_call_count == 0
