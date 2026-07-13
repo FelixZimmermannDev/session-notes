@@ -24,6 +24,7 @@ def test_save_sessions_creates_json_file_with_session_data(tmp_path):
             "session_number": 1,
             "date": "2026-07-08",
             "note": "Stored note",
+            "is_archived": False,
         }
     ]
 
@@ -68,6 +69,7 @@ def test_save_then_load_round_trip_preserves_multiple_sessions(tmp_path):
         CodingSession(1, "2026-07-08", "First note"),
         CodingSession(2, "2026-07-09", "Second note"),
     ]
+    original_sessions[1].archive()
 
     storage.save_sessions(original_sessions)
     loaded_sessions = storage.load_sessions()

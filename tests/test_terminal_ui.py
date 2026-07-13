@@ -290,3 +290,75 @@ def test_terminal_ui_rejects_empty_updated_note(
     assert "Please enter a session note" in captured.out
     assert session.get_note() == "Old note"
     assert storage.save_call_count == 0
+
+
+def test_terminal_ui_archives_confirmed_session_and_saves(
+    monkeypatch,
+    capsys,
+):
+    tracker = SessionTracker()
+    session = tracker.add_session("Archive me")
+    storage = FakeStorage()
+    set_inputs(monkeypatch, "4", "1", " Y ")
+
+    TerminalUI(tracker, storage).run()
+
+    captured = capsys.readouterr()
+    assert session.is_archived() is True
+    assert storage.save_call_count == 1
+    assert storage.saved_sessions == [session]
+    assert "Selected session:" in captured.out
+    assert "Note: Archive me" in captured.out
+    assert "Session archived" in captured.out
+
+
+@pytest.mark.parametrize("invalid_number", ["not-a-number", "", "   ", "1.5"])
+def test_terminal_ui_rejects_invalid_archive_session_number(
+    monkeypatch,
+    capsys,
+    invalid_number,
+):
+    storage = FakeStorage()
+    set_inputs(monkeypatch, invalid_number)
+
+    TerminalUI(SessionTracker(), storage).handle_archive_session()
+
+    captured = capsys.readouterr()
+    assert "Invalid session number" in captured.out
+    assert storage.save_call_count == 0
+
+
+def test_terminal_ui_reports_missing_archive_session_without_confirmation(
+    monkeypatch,
+    capsys,
+):
+    tracker = SessionTracker()
+    existing_session = tracker.add_session("Keep active")
+    storage = FakeStorage()
+    set_inputs(monkeypatch, "99")
+
+    TerminalUI(tracker, storage).handle_archive_session()
+
+    captured = capsys.readouterr()
+    assert "Session not found" in captured.out
+    assert existing_session.is_archived() is False
+    assert storage.save_call_count == 0
+
+
+@pytest.mark.parametrize("confirmation", ["n", "no", "", "yes"])
+def test_terminal_ui_cancels_archive_without_exact_yes_confirmation(
+    monkeypatch,
+    capsys,
+    confirmation,
+):
+    tracker = SessionTracker()
+    session = tracker.add_session("Keep active")
+    storage = FakeStorage()
+    set_inputs(monkeypatch, "1", confirmation)
+
+    TerminalUI(tracker, storage).handle_archive_session()
+
+    captured = capsys.readouterr()
+    assert "Archive cancelled" in captured.out
+    assert session.is_archived() is False
+    assert storage.save_call_count == 0

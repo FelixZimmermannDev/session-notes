@@ -42,7 +42,8 @@ def test_to_dict_returns_session_data():
     assert result == {
         "session_number": 1,
         "date": "2026-07-08",
-        "note": "OOP gelernt"
+        "note": "OOP gelernt",
+        "is_archived": False,
     }
 
 def test_from_dict_creates_coding_session():
@@ -58,6 +59,29 @@ def test_from_dict_creates_coding_session():
     assert session.get_session_number() == 1
     assert session.get_date() == "2026-07-08"
     assert session.get_note() == "OOP gelernt"
+    assert session.is_archived() is False
+
+
+def test_from_dict_restores_archived_session():
+    data = {
+        "session_number": 1,
+        "date": "2026-07-08",
+        "note": "Archived note",
+        "is_archived": True,
+    }
+
+    session = CodingSession.from_dict(data)
+
+    assert session.is_archived() is True
+
+
+def test_archive_marks_session_as_archived():
+    session = CodingSession(1, "2026-07-08", "Archive me")
+
+    session.archive()
+
+    assert session.is_archived() is True
+
 
 def test_update_note_replaces_existing_note():
     session = CodingSession(

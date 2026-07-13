@@ -5,10 +5,11 @@ class EmptyNoteError(ValueError):
 
 class CodingSession:
 
-    def __init__(self, session_number, date, note):
+    def __init__(self, session_number, date, note, is_archived=False):
         self.session_number = session_number
         self.date = date
         self.note = self._clean_note(note)
+        self._is_archived = is_archived
 
     #Note
     def _clean_note(self, note):
@@ -41,7 +42,8 @@ class CodingSession:
         return {
             "session_number": self.session_number,
             "date": self.date,
-            "note": self.note
+            "note": self.note,
+            "is_archived": self._is_archived
         }
 
     @classmethod
@@ -49,5 +51,13 @@ class CodingSession:
         return cls(
             data["session_number"],
             data["date"],
-            data["note"]
+            data["note"],
+            data.get("is_archived", False)
         )
+
+    #ARCHIVE
+    def archive(self):
+        self._is_archived = True
+
+    def is_archived(self):
+        return self._is_archived

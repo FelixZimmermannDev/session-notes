@@ -189,3 +189,50 @@ def test_update_session_note_rejects_empty_note():
         tracker.update_session_note(1, "   ")
 
     assert session.get_note() == "Old note"
+
+
+def test_archive_session_archives_and_returns_existing_session():
+    tracker = SessionTracker()
+    session = tracker.add_session("Archive me")
+
+    result = tracker.archive_session(1)
+
+    assert result is session
+    assert session.is_archived() is True
+    assert tracker.get_sessions() == [session]
+    assert tracker.get_active_sessions() == []
+    assert tracker.get_session_by_number(1) is None
+
+
+def test_archive_session_returns_none_without_modifying_other_sessions():
+    tracker = SessionTracker()
+    session = tracker.add_session("Keep active")
+
+    result = tracker.archive_session(99)
+
+    assert result is None
+    assert session.is_archived() is False
+    assert tracker.get_active_sessions() == [session]
+
+
+def test_searches_exclude_archived_sessions():
+    tracker = SessionTracker()
+    archived_session = CodingSession(1, "2026-07-08", "Backend work")
+    active_session = CodingSession(2, "2026-07-08", "Backend tests")
+    tracker.set_sessions([archived_session, active_session])
+    tracker.archive_session(1)
+
+    assert tracker.get_session_by_number(1) is None
+    assert tracker.get_sessions_by_date("2026-07-08") == [active_session]
+    assert tracker.get_sessions_by_note("backend") == [active_session]
+
+
+def test_archived_session_cannot_be_updated():
+    tracker = SessionTracker()
+    session = tracker.add_session("Original note")
+    tracker.archive_session(1)
+
+    result = tracker.update_session_note(1, "New note")
+
+    assert result is None
+    assert session.get_note() == "Original note"

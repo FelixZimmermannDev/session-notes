@@ -31,7 +31,10 @@ class SessionTracker:
     #FIND SESSION
     def get_session_by_number(self, session_number):
         for session in self.sessions:
-            if session.get_session_number() == session_number:
+            if (
+                session.get_session_number() == session_number
+                and not session.is_archived()
+            ):
                 return session
 
         return None
@@ -40,6 +43,9 @@ class SessionTracker:
         matching_sessions = []
 
         for session in self.sessions:
+            if session.is_archived():
+                continue
+
             if session.get_date() == target_date:
                 matching_sessions.append(session)
 
@@ -53,6 +59,9 @@ class SessionTracker:
             return []
 
         for session in self.sessions:
+            if session.is_archived():
+                continue
+
             note = session.get_note().lower()
 
             if cleaned_keyword in note:
@@ -74,3 +83,23 @@ class SessionTracker:
     #JSON
     def set_sessions(self, sessions):
         self.sessions = sessions
+
+    #ARCHIVE
+    def archive_session(self, session_number):
+        session = self.get_session_by_number(session_number)
+
+        if session is None:
+            return None
+
+        session.archive()
+
+        return session
+
+    def get_active_sessions(self):
+        active_sessions = []
+
+        for session in self.sessions:
+            if not session.is_archived():
+                active_sessions.append(session)
+
+        return active_sessions

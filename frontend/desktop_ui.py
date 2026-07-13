@@ -345,7 +345,7 @@ class FindDialog(QDialog):
 
         matching_sessions = []
 
-        for session in self.tracker.get_sessions():
+        for session in self.tracker.get_active_sessions():
             if (
                 session_number is not None
                 and session.get_session_number() != session_number

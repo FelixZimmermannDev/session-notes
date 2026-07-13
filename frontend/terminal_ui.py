@@ -12,6 +12,7 @@ class TerminalUI:
         print("1 - Add session")
         print("2 - Search sessions")
         print("3 - Update session note")
+        print("4 - Archive session")
 
         option = input("Enter option: ")
 
@@ -21,6 +22,8 @@ class TerminalUI:
             self.search_menu()
         elif option == "3":
             self.handle_update_session()
+        elif option == "4":
+            self.handle_archive_session()
         else:
             print("Invalid option")
 
@@ -145,3 +148,42 @@ class TerminalUI:
 
         print("Session updated")
         self.show_session(session)
+
+    def handle_archive_session(self):
+        try:
+            session_number = int(
+                input("Enter session number: ")
+            )
+        except ValueError:
+            print("Invalid session number")
+            return
+
+        session = self.session_tracker.get_session_by_number(
+            session_number
+        )
+
+        if session is None:
+            print("Session not found")
+            return
+
+        print("Selected session:")
+        self.show_session(session)
+
+        confirmation = input(
+            "Archive this session? (y/n): "
+        ).strip().lower()
+
+        if confirmation != "y":
+            print("Archive cancelled")
+            return
+
+        archived_session = self.session_tracker.archive_session(
+            session_number
+        )
+
+        self.storage.save_sessions(
+            self.session_tracker.get_sessions()
+        )
+
+        print("Session archived")
+        self.show_session(archived_session)

@@ -214,6 +214,20 @@ def test_find_dialog_finds_sessions_with_date_only(app):
     assert dialog.update_selected_button.isHidden() is False
 
 
+def test_find_dialog_does_not_find_archived_sessions(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Archived desktop note")
+    tracker.archive_session(session.get_session_number())
+    ui = DesktopUI(tracker)
+    dialog = FindDialog(ui)
+    dialog.note_search_input.setText("archived")
+
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == "No sessions found."
+    assert dialog.result_panel.isHidden() is True
+
+
 def test_find_dialog_combines_two_search_values(app):
     tracker = SessionTracker()
     tracker.set_sessions([
