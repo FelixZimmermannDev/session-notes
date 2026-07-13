@@ -113,6 +113,16 @@ class TerminalUI:
         except ValueError:
             print("Invalid session number")
             return
+        session = self.session_tracker.get_session_by_number(
+            session_number
+        )
+
+        if session is None:
+            print("Session not found")
+            return
+
+        print("Current session:")
+        self.show_session(session)
 
         new_note = input("Enter new note: ")
 
@@ -135,4 +145,3 @@ class TerminalUI:
 
         print("Session updated")
         self.show_session(session)
-

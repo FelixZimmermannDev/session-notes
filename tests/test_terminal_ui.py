@@ -195,6 +195,8 @@ def test_terminal_ui_updates_session_note(
     captured = capsys.readouterr()
 
     assert session.get_note() == "New note"
+    assert "Current session:" in captured.out
+    assert "Note: Old note" in captured.out
     assert "Session updated" in captured.out
     assert "Session 1" in captured.out
     assert f"Date: {session.get_date()}" in captured.out
@@ -238,7 +240,7 @@ def test_terminal_ui_shows_message_when_update_session_is_missing(
     existing_session = tracker.add_session("Existing note")
     storage = FakeStorage()
 
-    set_inputs(monkeypatch, "99", "New note")
+    set_inputs(monkeypatch, "99")
 
     ui = TerminalUI(tracker, storage)
     ui.handle_update_session()
