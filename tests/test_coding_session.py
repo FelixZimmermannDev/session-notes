@@ -11,6 +11,12 @@ def test_create_coding_session():
     assert session.get_note() == "OOP gelernt"
 
 
+def test_clean_date_accepts_valid_iso_date():
+    result = CodingSession._clean_date("2026-07-13")
+
+    assert result == "2026-07-13"
+
+
 def test_note_is_stripped_on_create():
     session = CodingSession(1,
                             "2026-07-08",

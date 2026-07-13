@@ -1,25 +1,30 @@
+from datetime import date
+
 class EmptyNoteError(ValueError):
     def __init__(self):
         super().__init__("Please enter a session note")
 
+class InvalidDateError(ValueError):
+    def __init__(self):
+        super().__init__("Please enter a valid date in YYYY-MM-DD format")
 
 class CodingSession:
 
     def __init__(self, session_number, date, note, is_archived=False):
         self.session_number = session_number
-        self.date = date
+        self.date = self._clean_date(date)
         self.note = self._clean_note(note)
         self._is_archived = is_archived
 
     #Note
     def _clean_note(self, note):
         if note is None:
-            raise EmptyNoteError
+            raise EmptyNoteError()
 
         cleaned_note = note.strip()
 
         if not cleaned_note:
-            raise EmptyNoteError
+            raise EmptyNoteError()
 
         return cleaned_note
 
@@ -61,3 +66,21 @@ class CodingSession:
 
     def is_archived(self):
         return self._is_archived
+
+    #DATA VALIDATION
+    @staticmethod
+    def _clean_date(date_value):
+        if not isinstance(date_value, str):
+            raise InvalidDateError()
+
+        cleaned_date = date_value.strip()
+
+        try:
+            parsed_date = date.fromisoformat(cleaned_date)
+        except ValueError:
+            raise InvalidDateError() from None
+
+        if parsed_date.isoformat() != cleaned_date:
+            raise InvalidDateError()
+
+        return cleaned_date
