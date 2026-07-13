@@ -176,6 +176,7 @@ def test_find_dialog_finds_session_with_number_only(app):
     assert "Second note" not in dialog.result_label.text()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
+    assert dialog.archive_selected_button.isHidden() is False
 
 
 def test_find_dialog_finds_sessions_with_note_only(app):
@@ -193,6 +194,7 @@ def test_find_dialog_finds_sessions_with_note_only(app):
     assert "Learned JSON" not in dialog.result_label.text()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
+    assert dialog.archive_selected_button.isHidden() is False
 
 
 def test_find_dialog_finds_sessions_with_date_only(app):
@@ -212,6 +214,7 @@ def test_find_dialog_finds_sessions_with_date_only(app):
     assert "First date" not in dialog.result_label.text()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
+    assert dialog.archive_selected_button.isHidden() is False
 
 
 def test_find_dialog_does_not_find_archived_sessions(app):
@@ -292,7 +295,7 @@ def test_desktop_widget_buttons_have_style_object_names(app):
 
     assert widget.save_note_button.objectName() == "saveNoteButton"
     assert widget.find_button.objectName() == "findButton"
-    assert widget.find_button.text() == "Find / update"
+    assert widget.find_button.text() == "Find / update / archive"
     assert widget.settings_button.objectName() == "settingsButton"
     assert widget.hide_button.objectName() == "windowControlButton"
     assert widget.close_button.objectName() == "closeButton"
@@ -456,6 +459,74 @@ def test_find_dialog_back_buttons_move_between_search_results_and_update(app):
 
     assert dialog.search_panel.isHidden() is False
     assert dialog.result_panel.isHidden() is True
+
+
+def test_find_dialog_archives_selected_session_and_saves(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Archive desktop note")
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    dialog = FindDialog(ui)
+    dialog.number_input.setText("1")
+    dialog.find_sessions_button.click()
+
+    dialog.archive_selected_button.click()
+
+    assert dialog.archive_panel.isHidden() is False
+    assert "#1" in dialog.archive_session_label.text()
+    assert session.get_date() in dialog.archive_session_label.text()
+    assert "Archive desktop note" in dialog.archive_session_label.text()
+    assert session.is_archived() is False
+    assert storage.save_call_count == 0
+
+    dialog.confirm_archive_button.click()
+
+    assert session.is_archived() is True
+    assert tracker.get_session_by_number(1) is None
+    assert storage.save_call_count == 1
+    assert storage.saved_sessions == [session]
+    assert dialog.result_label.text() == (
+        "Session #1 archived: Archive desktop note"
+    )
+
+
+def test_find_dialog_archive_back_button_cancels_archive(app):
+    tracker = SessionTracker()
+    session = tracker.add_session("Keep desktop note")
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    dialog = FindDialog(ui)
+    dialog.note_search_input.setText("keep")
+    dialog.find_sessions_button.click()
+    dialog.archive_selected_button.click()
+
+    dialog.archive_back_button.click()
+
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.archive_panel.isHidden() is True
+    assert session.is_archived() is False
+    assert storage.save_call_count == 0
+
+
+def test_find_dialog_removes_archived_session_from_multiple_results(app):
+    tracker = SessionTracker()
+    first_session = tracker.add_session("Shared archive keyword")
+    second_session = tracker.add_session("Shared active keyword")
+    storage = FakeStorage()
+    ui = DesktopUI(tracker, storage)
+    dialog = FindDialog(ui)
+    dialog.note_search_input.setText("shared")
+    dialog.find_sessions_button.click()
+    dialog.result_selector.setCurrentIndex(0)
+    dialog.archive_selected_button.click()
+
+    dialog.confirm_archive_button.click()
+
+    assert first_session.is_archived() is True
+    assert second_session.is_archived() is False
+    assert dialog.result_panel.isHidden() is False
+    assert dialog.result_selector.count() == 1
+    assert dialog.result_selector.currentData() == 2
 
 
 def test_find_dialog_rejects_empty_update_and_keeps_old_note(app):

@@ -68,7 +68,7 @@ class CodingSessionWidget(QWidget):
         self.note_input.setPlaceholderText("Write a session note")
         self.save_note_button = QPushButton("Save note")
         self.save_note_button.setObjectName("saveNoteButton")
-        self.find_button = QPushButton("Find / update")
+        self.find_button = QPushButton("Find / update / archive")
         self.find_button.setObjectName("findButton")
 
         header_layout = QHBoxLayout()
@@ -217,7 +217,7 @@ class FindDialog(QDialog):
         super().__init__(desktop_ui.widget)
         self.desktop_ui = desktop_ui
         self.tracker = desktop_ui.tracker
-        self.setWindowTitle("Find / update sessions")
+        self.setWindowTitle("Find / update / archive sessions")
         self.matching_sessions = []
         self.selected_session_number = None
 
@@ -252,10 +252,13 @@ class FindDialog(QDialog):
         self.result_selector = QComboBox()
         self.update_selected_button = QPushButton("Update selected")
         self.update_selected_button.setObjectName("findButton")
+        self.archive_selected_button = QPushButton("Archive session")
+        self.archive_selected_button.setObjectName("closeButton")
         self.results_back_button = QPushButton("Back")
 
         result_actions = QHBoxLayout()
         result_actions.addWidget(self.update_selected_button)
+        result_actions.addWidget(self.archive_selected_button)
         result_actions.addWidget(self.results_back_button)
 
         self.result_panel = QWidget()
@@ -290,11 +293,32 @@ class FindDialog(QDialog):
         self.update_panel.setLayout(update_layout)
         self.update_panel.hide()
 
+        self.archive_session_label = QLabel()
+        self.archive_session_label.setWordWrap(True)
+        self.confirm_archive_button = QPushButton("Archive session")
+        self.confirm_archive_button.setObjectName("closeButton")
+        self.archive_back_button = QPushButton("Back")
+
+        archive_actions = QHBoxLayout()
+        archive_actions.addWidget(self.confirm_archive_button)
+        archive_actions.addWidget(self.archive_back_button)
+
+        self.archive_panel = QWidget()
+        archive_layout = QVBoxLayout()
+        archive_layout.setContentsMargins(0, 0, 0, 0)
+        archive_layout.addWidget(QLabel("Selected session"))
+        archive_layout.addWidget(self.archive_session_label)
+        archive_layout.addWidget(QLabel("Archive this session?"))
+        archive_layout.addLayout(archive_actions)
+        self.archive_panel.setLayout(archive_layout)
+        self.archive_panel.hide()
+
         layout = QVBoxLayout()
         layout.addWidget(self.search_panel)
         layout.addWidget(self.result_label)
         layout.addWidget(self.result_panel)
         layout.addWidget(self.update_panel)
+        layout.addWidget(self.archive_panel)
         self.setLayout(layout)
 
         self.number_input.returnPressed.connect(self.find_sessions)
@@ -303,10 +327,13 @@ class FindDialog(QDialog):
         self.date_input.returnPressed.connect(self.find_sessions)
         self.find_sessions_button.clicked.connect(self.find_sessions)
         self.update_selected_button.clicked.connect(self.begin_update)
+        self.archive_selected_button.clicked.connect(self.begin_archive)
         self.results_back_button.clicked.connect(self.show_search_step)
         self.new_note_input.returnPressed.connect(self.save_update)
         self.save_update_button.clicked.connect(self.save_update)
         self.update_back_button.clicked.connect(self.show_results_step)
+        self.confirm_archive_button.clicked.connect(self.confirm_archive)
+        self.archive_back_button.clicked.connect(self.show_results_step)
 
     def format_date_input(self, text):
         if self.is_formatting_date_input:
@@ -370,6 +397,7 @@ class FindDialog(QDialog):
     def show_search_step(self):
         self.result_panel.hide()
         self.update_panel.hide()
+        self.archive_panel.hide()
         self.search_panel.show()
         self.result_label.setText("Enter one or more search values.")
 
@@ -401,6 +429,7 @@ class FindDialog(QDialog):
         )
         self.search_panel.hide()
         self.update_panel.hide()
+        self.archive_panel.hide()
         self.result_panel.show()
 
     def begin_update(self):
@@ -419,6 +448,7 @@ class FindDialog(QDialog):
         )
         self.search_panel.hide()
         self.result_panel.hide()
+        self.archive_panel.hide()
         self.update_panel.show()
         self.new_note_input.setFocus()
 
@@ -443,6 +473,54 @@ class FindDialog(QDialog):
             f"{session.get_note()}"
         )
         self.new_note_input.clear()
+
+    def begin_archive(self):
+        session_number = self.result_selector.currentData()
+        session = self.tracker.get_session_by_number(session_number)
+
+        if session is None:
+            self.result_label.setText("Session not found.")
+            return
+
+        self.selected_session_number = session_number
+        self.archive_session_label.setText(self.format_session(session))
+        self.result_label.setText(
+            f"Confirm archiving session #{session_number}."
+        )
+        self.search_panel.hide()
+        self.result_panel.hide()
+        self.update_panel.hide()
+        self.archive_panel.show()
+
+    def confirm_archive(self):
+        session = self.tracker.archive_session(
+            self.selected_session_number
+        )
+
+        if session is None:
+            self.result_label.setText("Session not found.")
+            return
+
+        self.desktop_ui.save_sessions()
+        self.matching_sessions = [
+            matching_session
+            for matching_session in self.matching_sessions
+            if matching_session.get_session_number()
+            != session.get_session_number()
+        ]
+
+        if self.matching_sessions:
+            self.show_results_step()
+        else:
+            self.result_panel.hide()
+            self.update_panel.hide()
+            self.archive_panel.hide()
+            self.search_panel.show()
+
+        self.result_label.setText(
+            f"Session #{session.get_session_number()} archived: "
+            f"{session.get_note()}"
+        )
 
     def format_session(self, session):
         return (
