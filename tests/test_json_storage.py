@@ -92,6 +92,7 @@ def test_save_sessions_keeps_old_file_when_writing_fails(
     monkeypatch,
 ):
     file_path = tmp_path / "sessions.json"
+    temporary_file_path = tmp_path / "sessions.json.tmp"
 
     old_data = [
         {
@@ -132,6 +133,40 @@ def test_save_sessions_keeps_old_file_when_writing_fails(
     )
 
     assert remaining_data == old_data
+    assert not temporary_file_path.exists()
+
+
+def test_save_sessions_cleans_up_when_replacing_file_fails(
+    tmp_path,
+    monkeypatch,
+):
+    file_path = tmp_path / "sessions.json"
+    temporary_file_path = tmp_path / "sessions.json.tmp"
+    old_data = [
+        {
+            "session_number": 1,
+            "date": "2026-07-08",
+            "note": "Old safe note",
+        }
+    ]
+    file_path.write_text(json.dumps(old_data), encoding="utf-8")
+    storage = JsonStorage(file_path)
+
+    def failing_replace(*args, **kwargs):
+        raise OSError("Simulated replace error")
+
+    monkeypatch.setattr(
+        "backend.json_storage.os.replace",
+        failing_replace,
+    )
+
+    with pytest.raises(OSError, match="Simulated replace error"):
+        storage.save_sessions([
+            CodingSession(2, "2026-07-09", "New note"),
+        ])
+
+    assert json.loads(file_path.read_text(encoding="utf-8")) == old_data
+    assert not temporary_file_path.exists()
 
 
 def test_atomic_save_removes_temporary_file_after_success(tmp_path):

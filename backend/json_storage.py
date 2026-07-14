@@ -27,17 +27,22 @@ class JsonStorage:
             self.file_path.name + ".tmp"
         )
 
-        with open(
-            temporary_file_path,
-            "w",
-            encoding="utf-8"
-        ) as file:
-            json.dump(data, file, indent=4)
+        try:
+            with open(
+                temporary_file_path,
+                "w",
+                encoding="utf-8"
+            ) as file:
+                json.dump(data, file, indent=4)
 
-        os.replace(
-            temporary_file_path,
-            self.file_path
-        )
+            os.replace(
+                temporary_file_path,
+                self.file_path
+            )
+
+        finally:
+            if temporary_file_path.exists():
+                temporary_file_path.unlink()
 
     def load_sessions(self):
         if not self.file_path.exists():
