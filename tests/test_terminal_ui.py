@@ -208,6 +208,49 @@ def test_terminal_ui_shows_error_for_invalid_search_menu_option(
 
     assert "Invalid option" in captured.out
 
+def test_prompt_for_session_displays_and_returns_existing_session(
+    monkeypatch,
+    capsys,
+):
+    tracker = SessionTracker()
+    session = tracker.add_session("Existing session")
+    set_inputs(monkeypatch, "1")
+
+    result = TerminalUI(tracker, FakeStorage())._prompt_for_session()
+
+    captured = capsys.readouterr()
+    assert result is session
+    assert "Session 1" in captured.out
+    assert f"Date: {session.get_date()}" in captured.out
+    assert "Note: Existing session" in captured.out
+
+
+def test_prompt_for_session_rejects_non_integer_input(monkeypatch, capsys):
+    set_inputs(monkeypatch, "not-a-number")
+
+    result = TerminalUI(
+        SessionTracker(),
+        FakeStorage(),
+    )._prompt_for_session()
+
+    captured = capsys.readouterr()
+    assert result is None
+    assert "Invalid session number" in captured.out
+
+
+def test_prompt_for_session_reports_nonexistent_session(monkeypatch, capsys):
+    set_inputs(monkeypatch, "99")
+
+    result = TerminalUI(
+        SessionTracker(),
+        FakeStorage(),
+    )._prompt_for_session()
+
+    captured = capsys.readouterr()
+    assert result is None
+    assert "Session not found" in captured.out
+
+
 def test_terminal_ui_updates_session_note(
     monkeypatch,
     capsys,
@@ -224,7 +267,6 @@ def test_terminal_ui_updates_session_note(
     captured = capsys.readouterr()
 
     assert session.get_note() == "New note"
-    assert "Current session:" in captured.out
     assert "Note: Old note" in captured.out
     assert "Session updated" in captured.out
     assert "Session 1" in captured.out
@@ -336,7 +378,6 @@ def test_terminal_ui_archives_confirmed_session_and_saves(
     assert session.is_archived() is True
     assert storage.save_call_count == 1
     assert storage.saved_sessions == [session]
-    assert "Selected session:" in captured.out
     assert "Note: Archive me" in captured.out
     assert "Session archived" in captured.out
 
