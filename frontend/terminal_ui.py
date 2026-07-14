@@ -1,6 +1,10 @@
-from backend.coding_session import EmptyNoteError
+from backend.coding_session import (
+    CodingSession,
+    EmptyNoteError,
+    FutureDateError,
+    InvalidDateError,
+)
 from backend.session_tracker import SessionTracker
-
 
 class TerminalUI:
 
@@ -63,6 +67,13 @@ class TerminalUI:
 
         elif option == "3":
             target_date = input("Enter session date: ")
+
+            try:
+                target_date = CodingSession._clean_date(target_date)
+            except (InvalidDateError, FutureDateError) as error:
+                print(error)
+                return
+
             self.search_sessions_by_date(target_date)
 
         else:

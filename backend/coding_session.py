@@ -8,6 +8,10 @@ class InvalidDateError(ValueError):
     def __init__(self):
         super().__init__("Please enter a valid date in YYYY-MM-DD format")
 
+class FutureDateError(ValueError):
+    def __init__(self):
+        super().__init__("Please enter today's date or an earlier date")
+
 class CodingSession:
 
     def __init__(self, session_number, date, note, is_archived=False):
@@ -82,5 +86,8 @@ class CodingSession:
 
         if parsed_date.isoformat() != cleaned_date:
             raise InvalidDateError()
+
+        if parsed_date > date.today():
+            raise FutureDateError()
 
         return cleaned_date

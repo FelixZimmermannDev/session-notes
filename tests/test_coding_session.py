@@ -1,6 +1,13 @@
+from datetime import date
+
 import pytest
 
-from backend.coding_session import CodingSession, EmptyNoteError
+from backend.coding_session import (
+    CodingSession,
+    EmptyNoteError,
+    FutureDateError,
+    InvalidDateError,
+)
 
 
 def test_create_coding_session():
@@ -15,6 +22,32 @@ def test_clean_date_accepts_valid_iso_date():
     result = CodingSession._clean_date("2026-07-13")
 
     assert result == "2026-07-13"
+
+
+def test_clean_date_accepts_today():
+    today = date.today().isoformat()
+
+    assert CodingSession._clean_date(today) == today
+
+
+@pytest.mark.parametrize(
+    "invalid_date",
+    [None, "", "not-a-date", "2026-02-30", "2026-7-13"],
+)
+def test_clean_date_rejects_invalid_dates(invalid_date):
+    with pytest.raises(
+        InvalidDateError,
+        match="Please enter a valid date in YYYY-MM-DD format",
+    ):
+        CodingSession._clean_date(invalid_date)
+
+
+def test_clean_date_rejects_future_date():
+    with pytest.raises(
+        FutureDateError,
+        match="Please enter today's date or an earlier date",
+    ):
+        CodingSession._clean_date("9999-12-31")
 
 
 def test_note_is_stripped_on_create():

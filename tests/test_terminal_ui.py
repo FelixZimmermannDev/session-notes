@@ -109,6 +109,35 @@ def test_terminal_ui_searches_sessions_by_date(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "Note: Today session" in captured.out
 
+
+@pytest.mark.parametrize(
+    ("target_date", "message"),
+    [
+        ("not-a-date", "Please enter a valid date in YYYY-MM-DD format"),
+        ("2026-02-30", "Please enter a valid date in YYYY-MM-DD format"),
+        ("9999-12-31", "Please enter today's date or an earlier date"),
+    ],
+)
+def test_terminal_ui_rejects_invalid_search_date(
+    monkeypatch,
+    capsys,
+    target_date,
+    message,
+):
+    tracker = SessionTracker()
+
+    def fail_if_search_runs(_target_date):
+        pytest.fail("Date search should not run for an invalid date")
+
+    monkeypatch.setattr(tracker, "get_sessions_by_date", fail_if_search_runs)
+    set_inputs(monkeypatch, "2", "3", target_date)
+
+    TerminalUI(tracker, FakeStorage()).run()
+
+    captured = capsys.readouterr()
+    assert message in captured.out
+
+
 def test_terminal_ui_shows_message_when_session_number_is_missing(
     monkeypatch,
     capsys,
