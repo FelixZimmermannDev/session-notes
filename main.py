@@ -10,7 +10,7 @@ def get_sessions_file_path():
     return project_folder / "data" / "sessions.json"
 
 
-if __name__ == "__main__":
+def main():
     session_file = get_sessions_file_path()
 
     storage = JsonStorage(session_file)
@@ -21,3 +21,7 @@ if __name__ == "__main__":
 
     ui = TerminalUI(tracker, storage)
     ui.run()
+
+
+if __name__ == "__main__":
+    main()
