@@ -2,21 +2,37 @@
     {
         "session_number": 1,
         "date": "2026-07-08",
-        "note": "First JSON test"
+        "note": "Test",
+        "is_archived": false
     },
     {
         "session_number": 2,
         "date": "2026-07-08",
-        "note": "Second JSON test"
+        "note": "json.exe",
+        "is_archived": true
     },
     {
         "session_number": 3,
         "date": "2026-07-09",
-        "note": "note"
+        "note": "note",
+        "is_archived": false
     },
     {
         "session_number": 4,
         "date": "2026-07-10",
-        "note": "Note aus anderer Terminal"
+        "note": "Note aus anderer Terminal",
+        "is_archived": false
+    },
+    {
+        "session_number": 5,
+        "date": "2026-07-10",
+        "note": "os.replace(source, target) gelernt",
+        "is_archived": false
+    },
+    {
+        "session_number": 6,
+        "date": "2026-07-13",
+        "note": "implement archive session",
+        "is_archived": false
     }
 ]
