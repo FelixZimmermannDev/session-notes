@@ -1,17 +1,27 @@
-from pathlib import Path
-
 import main
 
 
-def test_get_sessions_file_path_uses_project_data_folder(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_main_creates_and_runs_terminal_ui(monkeypatch):
+    tracker = object()
+    storage = object()
+    calls = {}
 
-    result = main.get_sessions_file_path()
-
-    expected = (
-        Path(main.__file__).resolve().parent
-        / "data"
-        / "sessions.json"
+    monkeypatch.setattr(
+        main,
+        "create_tracker_and_storage",
+        lambda: (tracker, storage),
     )
 
-    assert result == expected
+    class FakeTerminalUI:
+        def __init__(self, received_tracker, received_storage):
+            calls["dependencies"] = (received_tracker, received_storage)
+
+        def run(self):
+            calls["ran"] = True
+
+    monkeypatch.setattr(main, "TerminalUI", FakeTerminalUI)
+
+    main.main()
+
+    assert calls["dependencies"] == (tracker, storage)
+    assert calls["ran"] is True
