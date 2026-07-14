@@ -40,9 +40,7 @@ class TerminalUI:
 
         try:
             session = self._session_tracker.add_session(note)
-            self._storage.save_sessions(
-                self._session_tracker.get_sessions()
-            )
+            self._save_sessions()
             self.show_saved_session(session)
 
         except EmptyNoteError:
@@ -50,37 +48,46 @@ class TerminalUI:
 
     # SEARCH MENU
     def search_menu(self):
-        print("1 - Search by number")
-        print("2 - Search by note")
-        print("3 - Search by date")
+        self.show_search_menu()
 
         option = input("Enter option: ")
 
         if option == "1":
-            try:
-                number = int(input("Enter session number: "))
-            except ValueError:
-                print("Invalid session number")
-                return
-            self.search_session_by_number(number)
+            self._handle_search_by_number()
 
         elif option == "2":
-            keyword = input("Enter note keyword: ")
-            self.search_sessions_by_note(keyword)
+            self._handle_search_by_note()
 
         elif option == "3":
-            target_date = input("Enter session date: ")
-
-            try:
-                target_date = CodingSession._clean_date(target_date)
-            except (InvalidDateError, FutureDateError) as error:
-                print(error)
-                return
-
-            self.search_sessions_by_date(target_date)
+            self._handle_search_by_date()
 
         else:
             print("Invalid option")
+
+    # SEARCH HANDLERS
+    def _handle_search_by_number(self):
+        try:
+            number = int(input("Enter session number: "))
+        except ValueError:
+            print("Invalid session number")
+            return
+
+        self.search_session_by_number(number)
+
+    def _handle_search_by_note(self):
+        keyword = input("Enter note keyword: ")
+        self.search_sessions_by_note(keyword)
+
+    def _handle_search_by_date(self):
+        target_date = input("Enter session date: ")
+
+        try:
+            target_date = CodingSession._clean_date(target_date)
+        except (InvalidDateError, FutureDateError) as error:
+            print(error)
+            return
+
+        self.search_sessions_by_date(target_date)
 
     # SEARCH
     def search_session_by_number(self, number):
@@ -167,6 +174,11 @@ class TerminalUI:
         print(f"Session {session.get_session_number()}")
         print(f"Date: {session.get_date()}")
         print(f"Note: {session.get_note()}")
+
+    def show_search_menu(self):
+        print("1 - Search by number")
+        print("2 - Search by note")
+        print("3 - Search by date")
 
     # HELPERS
     def _prompt_for_session(self):
