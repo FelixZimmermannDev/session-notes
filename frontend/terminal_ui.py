@@ -136,7 +136,7 @@ class TerminalUI:
             print("Please enter a session note")
             return
 
-        self._save_session()
+        self._save_sessions()
 
         print("Session updated")
         self.show_session(updated_session)
@@ -159,7 +159,7 @@ class TerminalUI:
             session.get_session_number()
         )
 
-        self._save_session()
+        self._save_sessions()
 
         print("Session archived")
         self.show_session(archived_session)
@@ -182,7 +182,7 @@ class TerminalUI:
 
         return session
 
-    def _save_session(self):
+    def _save_sessions(self):
         self.storage.save_sessions(
             self.session_tracker.get_sessions()
         )
