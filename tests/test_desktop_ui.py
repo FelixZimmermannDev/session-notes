@@ -40,6 +40,17 @@ def test_desktop_widget_starts_on_current_session_one(app):
     assert widget.summary_label.text() == "Session: 1"
 
 
+def test_desktop_widget_uses_highest_loaded_session_for_next_number(app):
+    tracker = SessionTracker()
+    tracker.set_sessions([
+        CodingSession(5, "2026-07-08", "Loaded fifth session"),
+    ])
+
+    widget = CodingSessionWidget(tracker)
+
+    assert widget.summary_label.text() == "Session: 6"
+
+
 def test_desktop_widget_save_button_adds_session_and_shows_next_current_session(app):
     tracker = SessionTracker()
     widget = CodingSessionWidget(tracker)

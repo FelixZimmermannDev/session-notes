@@ -10,20 +10,23 @@ class SessionTracker:
 
     #ADD SESSION
     def add_session(self, note):
+        session_number = self.get_next_session_number()
+        today = date.today().isoformat()
+
+        session = CodingSession(session_number, today, note)
+        self.sessions.append(session)
+
+        return session
+
+    #SESSION NUMBER
+    def get_next_session_number(self):
         highest_session_number = 0
 
         for session in self.sessions:
             if session.get_session_number() > highest_session_number:
                 highest_session_number = session.get_session_number()
 
-        session_number = highest_session_number + 1
-        today = date.today().isoformat()
-
-        session = CodingSession(session_number, today, note)
-
-        self.sessions.append(session)
-
-        return session
+        return highest_session_number + 1
 
     def get_sessions(self):
         return self.sessions

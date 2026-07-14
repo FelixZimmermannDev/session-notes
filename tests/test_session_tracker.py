@@ -11,6 +11,37 @@ def test_tracker_starts_with_empty_session_list():
     assert tracker.get_sessions() == []
 
 
+def test_get_next_session_number_returns_one_when_empty():
+    tracker = SessionTracker()
+
+    assert tracker.get_next_session_number() == 1
+
+
+def test_get_next_session_number_uses_highest_existing_number():
+    tracker = SessionTracker()
+    tracker.set_sessions([
+        CodingSession(1, "2026-07-08", "First session"),
+        CodingSession(2, "2026-07-09", "Second session"),
+        CodingSession(5, "2026-07-10", "Fifth session"),
+    ])
+
+    assert tracker.get_next_session_number() == 6
+
+
+def test_get_next_session_number_does_not_modify_sessions():
+    tracker = SessionTracker()
+    tracker.set_sessions([
+        CodingSession(1, "2026-07-08", "First session"),
+        CodingSession(2, "2026-07-09", "Second session"),
+        CodingSession(5, "2026-07-10", "Fifth session"),
+    ])
+    sessions_before = list(tracker.get_sessions())
+
+    tracker.get_next_session_number()
+
+    assert tracker.get_sessions() == sessions_before
+
+
 def test_add_session_creates_numbered_session_for_today():
     tracker = SessionTracker()
 

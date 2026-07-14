@@ -21,7 +21,7 @@ class TerminalUI:
         option = input("Enter option: ")
 
         if option == "1":
-            self.add_session()
+            self._add_session()
         elif option == "2":
             self.search_menu()
         elif option == "3":
@@ -32,7 +32,7 @@ class TerminalUI:
             print("Invalid option")
 
     #ADD SESSION
-    def add_session(self):
+    def _add_session(self):
         note = input("Session note: ")
 
         try:

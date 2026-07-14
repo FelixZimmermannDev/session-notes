@@ -28,7 +28,7 @@ from backend.coding_session import EmptyNoteError
 class CodingSessionWidget(QWidget):
     def __init__(self, tracker, open_settings=None, save_sessions=None):
         super().__init__()
-        self.tracker = tracker
+        self.session_tracker = tracker
         self.open_settings = open_settings
         self.save_sessions = save_sessions
         self.open_find = None
@@ -173,7 +173,7 @@ class CodingSessionWidget(QWidget):
 
     def save_note(self):
         try:
-            session = self.tracker.add_session(self.note_input.text())
+            session = self.session_tracker.add_session(self.note_input.text())
         except EmptyNoteError as error:
             self.last_saved_label.setText(str(error))
             return
@@ -185,8 +185,8 @@ class CodingSessionWidget(QWidget):
         self.update_summary(session)
 
     def update_summary(self, last_session=None):
-        sessions = self.tracker.get_sessions()
-        self.summary_label.setText(f"Session: {len(sessions) + 1}")
+        next_session_number = self.session_tracker.get_next_session_number()
+        self.summary_label.setText(f"Session: {next_session_number}")
         self.summary_label.setStyleSheet("background-color: #6b7280; color: white;")
 
         if last_session is not None:

@@ -12,5 +12,3 @@ __pycache__/
 # Local application data
 data/sessions.json
 data/sessions.json.tmp
-
-
