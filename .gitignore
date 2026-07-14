@@ -8,3 +8,9 @@ __pycache__/
 
 # IDE files
 .idea/
+
+# Local application data
+data/sessions.json
+data/sessions.json.tmp
+
+
