@@ -1,6 +1,6 @@
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import QEvent, QPointF, Qt
+from PySide6.QtGui import QKeyEvent, QMouseEvent, QPalette
 from PySide6.QtWidgets import QApplication
 
 from backend.coding_session import CodingSession
@@ -144,6 +144,20 @@ def test_desktop_ui_saves_sessions_to_storage(app):
     assert storage.saved_sessions[0].get_note() == "Saved from desktop"
 
 
+def test_find_dialog_search_back_button_closes_dialog(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+    dialog.show()
+
+    dialog.search_back_button.click()
+
+    assert dialog.isHidden() is True
+    assert ui.widget.isVisible() is True
+    assert dialog.search_back_button.objectName() == "backButton"
+    assert dialog.search_actions_layout.stretch(0) == 1
+    assert dialog.search_actions_layout.stretch(1) == 1
+
+
 def test_find_dialog_date_input_starts_empty(app):
     ui = DesktopUI()
     dialog = FindDialog(ui)
@@ -171,6 +185,34 @@ def test_find_dialog_limits_date_input_to_eight_digits(app):
     assert dialog.date_input.text() == "2026-07-08"
 
 
+@pytest.mark.parametrize(
+    ("target_date", "message"),
+    [
+        ("2026-02-30", "Please enter a valid date in YYYY-MM-DD format"),
+        ("2100-01-01", "Please enter today's date or an earlier date"),
+    ],
+)
+def test_find_dialog_rejects_invalid_search_date(app, target_date, message):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+    dialog.date_input.setText(target_date)
+
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == message
+    assert dialog.result_panel.isHidden() is True
+
+
+def test_find_dialog_valid_date_without_matches_reports_no_sessions(app):
+    ui = DesktopUI()
+    dialog = FindDialog(ui)
+    dialog.date_input.setText("2000-01-01")
+
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == "No sessions found."
+
+
 def test_find_dialog_finds_session_with_number_only(app):
     tracker = SessionTracker()
     tracker.add_session("First note")
@@ -182,9 +224,10 @@ def test_find_dialog_finds_session_with_number_only(app):
     dialog.number_input.setText("1")
     dialog.find_sessions_button.click()
 
-    assert "#1" in dialog.result_label.text()
-    assert "First note" in dialog.result_label.text()
-    assert "Second note" not in dialog.result_label.text()
+    assert dialog.result_label.text() == "1 matching session found."
+    assert "#1" in dialog.result_selector.currentText()
+    assert "First note" in dialog.result_selector.currentText()
+    assert "Second note" not in dialog.result_selector.currentText()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
     assert dialog.archive_selected_button.isHidden() is False
@@ -201,11 +244,34 @@ def test_find_dialog_finds_sessions_with_note_only(app):
     dialog.note_search_input.setText("BACKEND")
     dialog.find_sessions_button.click()
 
-    assert "Worked on backend search" in dialog.result_label.text()
-    assert "Learned JSON" not in dialog.result_label.text()
+    assert dialog.result_label.text() == "1 matching session found."
+    assert "Worked on backend search" in dialog.result_selector.currentText()
+    assert "Learned JSON" not in dialog.result_selector.currentText()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
     assert dialog.archive_selected_button.isHidden() is False
+
+
+def test_find_dialog_presents_multiple_results_in_styled_selector(app):
+    tracker = SessionTracker()
+    tracker.add_session("Shared first note")
+    tracker.add_session("Shared second note")
+    ui = DesktopUI(tracker)
+    dialog = FindDialog(ui)
+    dialog.note_search_input.setText("shared")
+
+    dialog.find_sessions_button.click()
+
+    assert dialog.result_label.text() == "2 matching sessions found."
+    assert dialog.result_selector.count() == 2
+    assert dialog.result_selector.maxVisibleItems() == 5
+    assert dialog.result_selector.objectName() == "sessionSelector"
+    assert dialog.result_panel.objectName() == "dialogCard"
+    assert dialog.results_back_button.objectName() == "backButton"
+    assert dialog.update_back_button.objectName() == "backButton"
+    assert dialog.archive_back_button.objectName() == "backButton"
+    assert "sessionSelector" in DARK_STYLE
+    assert "backButton" in LIGHT_STYLE
 
 
 def test_find_dialog_finds_sessions_with_date_only(app):
@@ -221,8 +287,9 @@ def test_find_dialog_finds_sessions_with_date_only(app):
     dialog.date_input.setText("2026-07-09")
     dialog.find_sessions_button.click()
 
-    assert "Second date" in dialog.result_label.text()
-    assert "First date" not in dialog.result_label.text()
+    assert dialog.result_label.text() == "1 matching session found."
+    assert "Second date" in dialog.result_selector.currentText()
+    assert "First date" not in dialog.result_selector.currentText()
     assert dialog.result_panel.isHidden() is False
     assert dialog.update_selected_button.isHidden() is False
     assert dialog.archive_selected_button.isHidden() is False
@@ -257,9 +324,9 @@ def test_find_dialog_combines_two_search_values(app):
     dialog.date_input.setText("2026-07-09")
     dialog.find_sessions_button.click()
 
-    assert "Backend tests" in dialog.result_label.text()
-    assert "Backend work" not in dialog.result_label.text()
-    assert "Learned JSON" not in dialog.result_label.text()
+    assert "Backend tests" in dialog.result_selector.currentText()
+    assert "Backend work" not in dialog.result_selector.currentText()
+    assert "Learned JSON" not in dialog.result_selector.currentText()
 
 
 def test_find_dialog_combines_all_three_search_values(app):
@@ -277,8 +344,8 @@ def test_find_dialog_combines_all_three_search_values(app):
     dialog.date_input.setText("2026-07-09")
     dialog.find_sessions_button.click()
 
-    assert "#2" in dialog.result_label.text()
-    assert "#1" not in dialog.result_label.text()
+    assert "#2" in dialog.result_selector.currentText()
+    assert "#1" not in dialog.result_selector.currentText()
 
 
 def test_find_dialog_requires_at_least_one_search_value(app):
@@ -334,20 +401,96 @@ def test_desktop_ui_can_switch_between_hidden_window_and_floating_modes(app):
     assert ui.widget.windowFlags() & Qt.FramelessWindowHint
 
 
+def test_settings_dialog_groups_clean_controls_and_bottom_options(app):
+    dialog = SettingsDialog(DesktopUI())
+    dialog.show()
+    app.processEvents()
+
+    opacity_steps = [
+        dialog.opacity_input.itemText(index)
+        for index in range(dialog.opacity_input.count())
+    ]
+
+    assert opacity_steps == ["100%", "90%", "75%", "60%", "50%"]
+    assert dialog.opacity_input.maxVisibleItems() == 5
+    assert dialog.minimumWidth() == 380
+    assert dialog.mode_input.parentWidget().objectName() == "settingsCard"
+    assert dialog.theme_input.parentWidget().objectName() == "settingsCard"
+    assert dialog.always_on_top_input.text() == "Always on top"
+    assert dialog.compact_mode_input.text() == "Compact mode"
+    assert dialog.compact_mode_input.toolTip() == "Use compact layout"
+    assert dialog.always_on_top_input.parentWidget().objectName() == (
+        "settingsOptions"
+    )
+    assert dialog.compact_mode_input.parentWidget() is (
+        dialog.always_on_top_input.parentWidget()
+    )
+    assert dialog.apply_button.text() == "Apply changes"
+    assert dialog.apply_button.objectName() == "primaryButton"
+
+    settings_text_controls = (
+        dialog.mode_input,
+        dialog.position_input,
+        dialog.opacity_input,
+        dialog.theme_input,
+        dialog.always_on_top_input,
+        dialog.compact_mode_input,
+        dialog.apply_button,
+    )
+    assert all(control.font().pixelSize() == 12 for control in settings_text_controls)
+    assert all(control.font().bold() for control in settings_text_controls)
+    assert "settingsOption" in DARK_STYLE
+    assert "settingsOption" in LIGHT_STYLE
+
+
+def test_settings_dialog_switches_the_existing_ui_between_themes(app):
+    ui = DesktopUI()
+    dialog = SettingsDialog(ui)
+    dialog.show()
+
+    dialog.theme_input.setCurrentText("Light")
+    dialog.apply_settings()
+    app.processEvents()
+
+    assert ui.theme == "Light"
+    assert app.styleSheet() == LIGHT_STYLE
+    assert dialog.palette().color(QPalette.Window).name() == "#edf2f7"
+    assert ui.widget.summary_label.palette().color(
+        QPalette.WindowText
+    ).name() == "#26364d"
+    assert ui.widget.summary_label.styleSheet() == ""
+
+    dialog.theme_input.setCurrentText("Dark")
+    dialog.apply_settings()
+    app.processEvents()
+
+    assert ui.theme == "Dark"
+    assert app.styleSheet() == DARK_STYLE
+    assert dialog.palette().color(QPalette.Window).name() == "#171a21"
+    assert ui.widget.summary_label.palette().color(
+        QPalette.WindowText
+    ).name() == "#f4f7fb"
+
+
 def test_desktop_ui_settings_are_stored_in_memory(app):
     ui = DesktopUI()
 
     ui.set_position("bottom-left")
-    ui.set_opacity("80%")
+    ui.set_opacity("75%")
     ui.set_compact_mode(True)
     ui.set_always_on_top(False)
     ui.set_theme("Light")
 
     assert ui.widget.position == "bottom-left"
-    assert ui.opacity_label == "80%"
+    assert ui.opacity_label == "75%"
+    assert ui.widget.windowOpacity() == pytest.approx(0.75, abs=0.01)
     assert ui.widget.compact_mode is True
+    assert ui.widget.size().width() <= 285
+    assert ui.widget.size().height() <= 150
+    assert ui.widget.layout.contentsMargins().left() == 8
     assert ui.widget.always_on_top is False
     assert ui.theme == "Light"
+    assert app.styleSheet() == LIGHT_STYLE
 
 
 def test_tray_right_click_menu_has_settings_above_show(app):
@@ -356,6 +499,38 @@ def test_tray_right_click_menu_has_settings_above_show(app):
     action_names = [action.text() for action in ui.tray_icon.contextMenu().actions()]
 
     assert action_names == ["Settings", "Show", "Hide", "Quit"]
+
+
+def test_floating_widget_can_be_dragged_from_header(app):
+    widget = CodingSessionWidget(SessionTracker())
+    starting_position = widget.pos()
+    local_press_position = QPointF(15, 10)
+    global_press_position = QPointF(
+        starting_position.x() + 15,
+        starting_position.y() + 10,
+    )
+    press_event = QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        local_press_position,
+        global_press_position,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    move_event = QMouseEvent(
+        QEvent.Type.MouseMove,
+        QPointF(55, 40),
+        QPointF(global_press_position.x() + 40, global_press_position.y() + 30),
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+
+    widget.mousePressEvent(press_event)
+    widget.mouseMoveEvent(move_event)
+
+    assert widget.pos().x() == starting_position.x() + 40
+    assert widget.pos().y() == starting_position.y() + 30
 
 
 def test_widget_hide_button_hides_widget(app):

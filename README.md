@@ -1,8 +1,18 @@
 # Coding Session Tracker
 
-Coding Session Tracker is a local Python app for recording short, numbered, and dated coding-session notes in a PySide6 widget or terminal.
+Coding Session Tracker is a local Python application for recording short coding-session notes, each automatically numbered and dated. It provides a PySide6 desktop widget and a terminal interface.
 
 I built it as a one-month learning project focused on OOP, JSON persistence, agentic coding, and desktop development with PySide6.
+
+## Features
+
+- Add automatically numbered and dated session notes.
+- Search active sessions by number, note keyword, or date.
+- Combine search values in the desktop interface.
+- Update notes or archive sessions without reusing their numbers.
+- Use the desktop interface in floating, windowed, or hidden mode.
+- Adjust its position, opacity, theme, always-on-top behavior, and compact layout.
+- Perform one operation per launch through the terminal interface.
 
 ## Quick Start
 
@@ -14,18 +24,26 @@ I built it as a one-month learning project focused on OOP, JSON persistence, age
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/FelixZimmermannDev/session-notes.git
 cd session-notes
 python -m venv .venv
 ```
 
-Activate the virtual environment:
+Activate the virtual environment in PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or in Windows Command Prompt:
+
+```bat
+.venv\Scripts\activate.bat
+```
+
+On macOS or Linux:
 
 ```bash
-# Windows
-.venv\Scripts\activate
-
-# macOS/Linux
 source .venv/bin/activate
 ```
 
@@ -56,9 +74,9 @@ python -m pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The 138 tests cover the domain model, storage, both interfaces, and application startup.
+The test suite covers the domain model, storage, both interfaces, and application startup.
 
-## Extended Project Notes
+## Behavior and Limitations
 
 ### Data
 
@@ -67,8 +85,8 @@ The 138 tests cover the domain model, storage, both interfaces, and application 
 - The path is resolved from the project directory.
 - The file is excluded from Git because it contains local notes.
 - Storage is local: no database, cloud sync, accounts, or encryption.
-- Do not write from desktop and terminal instances at the same time.
-- Startup requires valid JSON.
+- Do not write from desktop and terminal instances at the same time; there is no file locking, so one instance can overwrite another instance's changes.
+- If the sessions file exists, it must contain a JSON array of valid session records or startup will fail.
 
 Each save is written to `sessions.json.tmp` and applied with `os.replace()`. A `finally` block removes leftover temporary files. The previous JSON remains intact if writing or replacement fails.
 
@@ -80,7 +98,7 @@ Each save is written to `sessions.json.tmp` and applied with `os.replace()`. A `
 - Archived sessions remain stored but cannot be searched or updated.
 - Archived numbers are never reused.
 - Keyword searches are case-insensitive substring matches.
-- Desktop settings reset after restart.
+- Desktop settings are stored only in memory and reset after restart.
 
 ## Architecture
 
@@ -100,7 +118,7 @@ session-notes/
 └── run_desktop.py          # Desktop entry point
 ```
 
-The domain model, collection logic, persistence, and presentation are separate. `app_setup.py` connects the tracker and storage once. Both frontends reuse the same backend.
+The domain model, collection logic, persistence, and presentation are separate. `app_setup.py` constructs and connects the tracker and storage for either entry point. Both frontends reuse the same backend.
 
 ## One-Month Learning Summary
 

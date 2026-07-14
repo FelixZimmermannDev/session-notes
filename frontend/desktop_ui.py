@@ -1,13 +1,13 @@
 from datetime import date
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QCloseEvent, QCursor, QKeyEvent
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QAction, QCloseEvent, QCursor, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
-    QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -20,9 +20,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from backend.coding_session import (
+    CodingSession,
+    EmptyNoteError,
+    FutureDateError,
+    InvalidDateError,
+)
 from backend.session_tracker import SessionTracker
 from frontend.styles import DARK_STYLE, LIGHT_STYLE
-from backend.coding_session import EmptyNoteError
 
 
 class CodingSessionWidget(QWidget):
@@ -36,12 +41,15 @@ class CodingSessionWidget(QWidget):
         self.position = "top-right"
         self.always_on_top = True
         self.compact_mode = False
+        self._drag_offset = None
 
         self.setObjectName("sessionCard")
         self.setWindowTitle("Coding Session Tracker")
 
         self.title_label = QLabel("Coding Session")
         self.title_label.setObjectName("titleLabel")
+        self.title_label.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.title_label.installEventFilter(self)
         self.settings_button = QPushButton("⚙")
         self.settings_button.setObjectName("settingsButton")
         self.settings_button.setFixedWidth(30)
@@ -109,11 +117,78 @@ class CodingSessionWidget(QWidget):
         event.ignore()
         self.hide()
 
+    def eventFilter(self, watched, event):
+        if watched is self.title_label:
+            if event.type() == QEvent.Type.MouseButtonPress:
+                if self._begin_window_drag(event):
+                    return True
+            elif event.type() == QEvent.Type.MouseMove:
+                if self._move_dragged_window(event):
+                    return True
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                if self._finish_window_drag(event):
+                    return True
+
+        return super().eventFilter(watched, event)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        header_bottom = self.close_button.geometry().bottom()
+        if event.position().y() <= header_bottom:
+            if self._begin_window_drag(event):
+                return
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self._move_dragged_window(event):
+            return
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if self._finish_window_drag(event):
+            return
+
+        super().mouseReleaseEvent(event)
+
+    def _begin_window_drag(self, event):
+        if not self.windowFlags() & Qt.FramelessWindowHint:
+            return False
+
+        if event.button() != Qt.MouseButton.LeftButton:
+            return False
+
+        self._drag_offset = (
+            event.globalPosition().toPoint()
+            - self.frameGeometry().topLeft()
+        )
+        event.accept()
+        return True
+
+    def _move_dragged_window(self, event):
+        if self._drag_offset is None:
+            return False
+
+        if not event.buttons() & Qt.MouseButton.LeftButton:
+            return False
+
+        self.move(event.globalPosition().toPoint() - self._drag_offset)
+        event.accept()
+        return True
+
+    def _finish_window_drag(self, event):
+        if self._drag_offset is None:
+            return False
+
+        self._drag_offset = None
+        event.accept()
+        return True
+
     def show_as_window(self):
         self.hide()
         self.setWindowFlags(Qt.Window)
         self.setWindowOpacity(1.0)
-        self.resize(390, 240)
+        self._apply_layout_density(windowed=True)
         self.show()
         self.update_summary()
 
@@ -123,7 +198,7 @@ class CodingSessionWidget(QWidget):
         if self.always_on_top:
             flags = flags | Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
-        self.resize(340, 210)
+        self._apply_layout_density(windowed=False)
         self.move_to_position()
         self.show()
         self.update_summary()
@@ -139,17 +214,45 @@ class CodingSessionWidget(QWidget):
 
     def set_compact_mode(self, enabled):
         self.compact_mode = enabled
-        if enabled:
-            self.date_label.hide()
-            self.last_saved_label.hide()
-            self.resize(300, 165)
-            self.layout.setSpacing(7)
-        else:
-            self.date_label.show()
-            self.last_saved_label.show()
-            self.resize(340, 210)
-            self.layout.setSpacing(10)
+        self.setProperty("compact", enabled)
+        self.date_label.setVisible(not enabled)
+        self.last_saved_label.setVisible(not enabled)
+        self._apply_layout_density(
+            windowed=not bool(self.windowFlags() & Qt.FramelessWindowHint)
+        )
+
+        for widget in [self, *self.findChildren(QWidget)]:
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.updateGeometry()
+            widget.update()
+
+        QApplication.instance().processEvents()
+        self._apply_layout_density(
+            windowed=not bool(self.windowFlags() & Qt.FramelessWindowHint)
+        )
         self.move_to_position()
+
+    def _apply_layout_density(self, windowed):
+        if self.compact_mode:
+            self.layout.setContentsMargins(8, 8, 8, 8)
+            self.layout.setSpacing(5)
+            control_width = 26
+            size = (320, 170) if windowed else (285, 145)
+        else:
+            self.layout.setContentsMargins(14, 14, 14, 14)
+            self.layout.setSpacing(10)
+            control_width = 30
+            size = (390, 240) if windowed else (340, 210)
+
+        for button in (
+            self.settings_button,
+            self.hide_button,
+            self.close_button,
+        ):
+            button.setFixedWidth(control_width)
+
+        self.resize(*size)
 
     def move_to_position(self):
         screen = QApplication.primaryScreen()
@@ -187,7 +290,6 @@ class CodingSessionWidget(QWidget):
     def update_summary(self, last_session=None):
         next_session_number = self.session_tracker.get_next_session_number()
         self.summary_label.setText(f"Session: {next_session_number}")
-        self.summary_label.setStyleSheet("background-color: #6b7280; color: white;")
 
         if last_session is not None:
             note_preview = self.create_note_preview(last_session.get_note())
@@ -218,6 +320,7 @@ class FindDialog(QDialog):
         self.desktop_ui = desktop_ui
         self.tracker = desktop_ui.tracker
         self.setWindowTitle("Find / update / archive sessions")
+        self.setMinimumWidth(480)
         self.matching_sessions = []
         self.selected_session_number = None
 
@@ -233,28 +336,56 @@ class FindDialog(QDialog):
 
         self.find_sessions_button = QPushButton("Find sessions")
         self.find_sessions_button.setObjectName("findButton")
+        self.search_back_button = QPushButton("Back")
+        self.search_back_button.setObjectName("backButton")
 
         self.search_panel = QWidget()
+        self.search_panel.setObjectName("dialogCard")
         search_layout = QVBoxLayout()
-        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.setContentsMargins(14, 14, 14, 14)
+        search_layout.setSpacing(8)
         search_layout.addWidget(QLabel("Session number"))
         search_layout.addWidget(self.number_input)
         search_layout.addWidget(QLabel("Note keyword"))
         search_layout.addWidget(self.note_search_input)
         search_layout.addWidget(QLabel("Date"))
         search_layout.addWidget(self.date_input)
-        search_layout.addWidget(self.find_sessions_button)
+
+        self.search_actions_layout = QHBoxLayout()
+        self.search_actions_layout.addWidget(self.find_sessions_button, 1)
+        self.search_actions_layout.addWidget(self.search_back_button, 1)
+        search_layout.addLayout(self.search_actions_layout)
         self.search_panel.setLayout(search_layout)
 
         self.result_label = QLabel("Enter one or more search values.")
+        self.result_label.setObjectName("dialogMessage")
         self.result_label.setWordWrap(True)
 
+        self.results_title_label = QLabel("Matching sessions")
+        self.results_title_label.setObjectName("sectionTitle")
+        self.results_help_label = QLabel(
+            "Choose a session below, then update or archive it."
+        )
+        self.results_help_label.setObjectName("mutedLabel")
+        self.results_help_label.setWordWrap(True)
+
         self.result_selector = QComboBox()
+        self.result_selector.setObjectName("sessionSelector")
+        self.result_selector.setMinimumHeight(38)
+        self.result_selector.setMaxVisibleItems(5)
+        self.result_selector.setMinimumContentsLength(35)
+        self.result_selector.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.result_selector.view().setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
         self.update_selected_button = QPushButton("Update selected")
         self.update_selected_button.setObjectName("findButton")
         self.archive_selected_button = QPushButton("Archive session")
         self.archive_selected_button.setObjectName("closeButton")
         self.results_back_button = QPushButton("Back")
+        self.results_back_button.setObjectName("backButton")
 
         result_actions = QHBoxLayout()
         result_actions.addWidget(self.update_selected_button)
@@ -262,29 +393,36 @@ class FindDialog(QDialog):
         result_actions.addWidget(self.results_back_button)
 
         self.result_panel = QWidget()
+        self.result_panel.setObjectName("dialogCard")
         result_layout = QVBoxLayout()
-        result_layout.setContentsMargins(0, 0, 0, 0)
-        result_layout.addWidget(QLabel("Select a session"))
+        result_layout.setContentsMargins(14, 14, 14, 14)
+        result_layout.setSpacing(10)
+        result_layout.addWidget(self.results_title_label)
+        result_layout.addWidget(self.results_help_label)
         result_layout.addWidget(self.result_selector)
         result_layout.addLayout(result_actions)
         self.result_panel.setLayout(result_layout)
         self.result_panel.hide()
 
         self.current_session_label = QLabel()
+        self.current_session_label.setObjectName("sessionDetails")
         self.current_session_label.setWordWrap(True)
         self.new_note_input = QLineEdit()
         self.new_note_input.setPlaceholderText("New session note")
         self.save_update_button = QPushButton("Save update")
         self.save_update_button.setObjectName("saveNoteButton")
         self.update_back_button = QPushButton("Back")
+        self.update_back_button.setObjectName("backButton")
 
         update_actions = QHBoxLayout()
         update_actions.addWidget(self.save_update_button)
         update_actions.addWidget(self.update_back_button)
 
         self.update_panel = QWidget()
+        self.update_panel.setObjectName("dialogCard")
         update_layout = QVBoxLayout()
-        update_layout.setContentsMargins(0, 0, 0, 0)
+        update_layout.setContentsMargins(14, 14, 14, 14)
+        update_layout.setSpacing(10)
         update_layout.addWidget(QLabel("Current session"))
         update_layout.addWidget(self.current_session_label)
         update_layout.addWidget(QLabel("New note"))
@@ -294,18 +432,22 @@ class FindDialog(QDialog):
         self.update_panel.hide()
 
         self.archive_session_label = QLabel()
+        self.archive_session_label.setObjectName("sessionDetails")
         self.archive_session_label.setWordWrap(True)
         self.confirm_archive_button = QPushButton("Archive session")
         self.confirm_archive_button.setObjectName("closeButton")
         self.archive_back_button = QPushButton("Back")
+        self.archive_back_button.setObjectName("backButton")
 
         archive_actions = QHBoxLayout()
         archive_actions.addWidget(self.confirm_archive_button)
         archive_actions.addWidget(self.archive_back_button)
 
         self.archive_panel = QWidget()
+        self.archive_panel.setObjectName("dialogCard")
         archive_layout = QVBoxLayout()
-        archive_layout.setContentsMargins(0, 0, 0, 0)
+        archive_layout.setContentsMargins(14, 14, 14, 14)
+        archive_layout.setSpacing(10)
         archive_layout.addWidget(QLabel("Selected session"))
         archive_layout.addWidget(self.archive_session_label)
         archive_layout.addWidget(QLabel("Archive this session?"))
@@ -314,6 +456,8 @@ class FindDialog(QDialog):
         self.archive_panel.hide()
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(12)
         layout.addWidget(self.search_panel)
         layout.addWidget(self.result_label)
         layout.addWidget(self.result_panel)
@@ -326,6 +470,7 @@ class FindDialog(QDialog):
         self.date_input.textEdited.connect(self.format_date_input)
         self.date_input.returnPressed.connect(self.find_sessions)
         self.find_sessions_button.clicked.connect(self.find_sessions)
+        self.search_back_button.clicked.connect(self.close)
         self.update_selected_button.clicked.connect(self.begin_update)
         self.archive_selected_button.clicked.connect(self.begin_archive)
         self.results_back_button.clicked.connect(self.show_search_step)
@@ -368,6 +513,13 @@ class FindDialog(QDialog):
                 session_number = int(number_text)
             except ValueError:
                 self.result_label.setText("Please enter a valid session number.")
+                return
+
+        if target_date:
+            try:
+                target_date = CodingSession._clean_date(target_date)
+            except (InvalidDateError, FutureDateError) as error:
+                self.result_label.setText(str(error))
                 return
 
         matching_sessions = []
@@ -421,11 +573,10 @@ class FindDialog(QDialog):
                     self.result_selector.setCurrentIndex(index)
                     break
 
+        session_count = len(self.matching_sessions)
+        session_word = "session" if session_count == 1 else "sessions"
         self.result_label.setText(
-            "\n".join(
-                self.format_session(session)
-                for session in self.matching_sessions
-            )
+            f"{session_count} matching {session_word} found."
         )
         self.search_panel.hide()
         self.update_panel.hide()
@@ -534,14 +685,13 @@ class SettingsDialog(QDialog):
     def __init__(self, desktop_ui):
         super().__init__(desktop_ui.widget)
         self.desktop_ui = desktop_ui
+        self.setObjectName("settingsDialog")
         self.setWindowTitle("Settings")
+        self.setMinimumWidth(380)
 
         self.mode_input = QComboBox()
         self.mode_input.addItems(["Hidden", "Window", "Floating"])
         self.mode_input.setCurrentText(desktop_ui.mode)
-
-        self.always_on_top_input = QCheckBox()
-        self.always_on_top_input.setChecked(desktop_ui.widget.always_on_top)
 
         self.position_input = QComboBox()
         self.position_input.addItems(
@@ -549,28 +699,76 @@ class SettingsDialog(QDialog):
         )
         self.position_input.setCurrentText(desktop_ui.widget.position)
 
-        self.opacity_input = QComboBox()
-        self.opacity_input.addItems(["100%", "90%", "80%"])
-        self.opacity_input.setCurrentText(desktop_ui.opacity_label)
-
         self.theme_input = QComboBox()
         self.theme_input.addItems(["Dark", "Light"])
         self.theme_input.setCurrentText(desktop_ui.theme)
 
-        self.compact_mode_input = QCheckBox()
+        self.opacity_input = QComboBox()
+        self.opacity_input.addItems(["100%", "90%", "75%", "60%", "50%"])
+        self.opacity_input.setMaxVisibleItems(5)
+        self.opacity_input.setCurrentText(desktop_ui.opacity_label)
+
+        settings_card = QWidget()
+        settings_card.setObjectName("settingsCard")
+        settings_layout = QGridLayout()
+        settings_layout.setContentsMargins(14, 14, 14, 14)
+        settings_layout.setHorizontalSpacing(18)
+        settings_layout.setVerticalSpacing(9)
+
+        fields = (
+            ("Window mode", self.mode_input),
+            ("Screen position", self.position_input),
+            ("Opacity", self.opacity_input),
+            ("Theme", self.theme_input),
+        )
+        for row, (label_text, field) in enumerate(fields):
+            label = QLabel(label_text)
+            label.setObjectName("fieldLabel")
+            field.setObjectName("settingsComboBox")
+            field.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+            settings_layout.addWidget(label, row, 0)
+            settings_layout.addWidget(field, row, 1)
+
+        settings_layout.setColumnStretch(1, 1)
+        settings_card.setLayout(settings_layout)
+
+        self.always_on_top_input = QCheckBox("Always on top")
+        self.always_on_top_input.setObjectName("settingsOption")
+        self.always_on_top_input.setChecked(desktop_ui.widget.always_on_top)
+
+        self.compact_mode_input = QCheckBox("Compact mode")
+        self.compact_mode_input.setObjectName("settingsOption")
+        self.compact_mode_input.setToolTip("Use compact layout")
         self.compact_mode_input.setChecked(desktop_ui.widget.compact_mode)
 
-        save_button = QPushButton("Apply")
-        save_button.clicked.connect(self.apply_settings)
+        options_card = QWidget()
+        options_card.setObjectName("settingsOptions")
+        options_layout = QHBoxLayout()
+        options_layout.setContentsMargins(16, 13, 16, 13)
+        options_layout.setSpacing(20)
+        options_layout.addWidget(self.always_on_top_input)
+        options_layout.addStretch()
+        options_layout.addWidget(self.compact_mode_input)
+        options_card.setLayout(options_layout)
 
-        layout = QFormLayout()
-        layout.addRow("Mode", self.mode_input)
-        layout.addRow("Always on top", self.always_on_top_input)
-        layout.addRow("Position", self.position_input)
-        layout.addRow("Opacity", self.opacity_input)
-        layout.addRow("Theme", self.theme_input)
-        layout.addRow("Compact mode", self.compact_mode_input)
-        layout.addRow(save_button)
+        self.apply_button = QPushButton("Apply changes")
+        self.apply_button.setObjectName("primaryButton")
+        self.apply_button.setMinimumWidth(140)
+        self.apply_button.clicked.connect(self.apply_settings)
+
+        action_layout = QHBoxLayout()
+        action_layout.addStretch()
+        action_layout.addWidget(self.apply_button)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+        layout.addWidget(settings_card)
+        layout.addWidget(options_card)
+        layout.addLayout(action_layout)
         self.setLayout(layout)
 
     def apply_settings(self):
@@ -663,7 +861,9 @@ class DesktopUI:
         opacity_map = {
             "100%": 1.0,
             "90%": 0.9,
-            "80%": 0.8,
+            "75%": 0.75,
+            "60%": 0.6,
+            "50%": 0.5,
         }
         self.widget.setWindowOpacity(opacity_map[opacity_label])
 
@@ -671,12 +871,15 @@ class DesktopUI:
         self.widget.set_compact_mode(enabled)
 
     def set_theme(self, theme):
+        stylesheets = {
+            "Dark": DARK_STYLE,
+            "Light": LIGHT_STYLE,
+        }
+        if theme not in stylesheets:
+            raise ValueError(f"Unknown theme: {theme}")
+
         self.theme = theme
-        if theme == "Light":
-            QApplication.instance().setStyleSheet(LIGHT_STYLE)
-        else:
-            QApplication.instance().setStyleSheet(DARK_STYLE)
-        self.widget.update_summary()
+        QApplication.instance().setStyleSheet(stylesheets[theme])
 
     def show_settings(self):
         if self.settings_dialog is None or not self.settings_dialog.isVisible():
