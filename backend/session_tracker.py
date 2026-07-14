@@ -5,35 +5,49 @@ from backend.coding_session import CodingSession
 
 class SessionTracker:
 
+    # INITIALIZATION
     def __init__(self):
-        self.sessions = []
+        self._sessions = []
 
-    #ADD SESSION
-    def add_session(self, note):
-        session_number = self.get_next_session_number()
-        today = date.today().isoformat()
+    # SESSION COLLECTION
+    def get_sessions(self):
+        return list(self._sessions)
 
-        session = CodingSession(session_number, today, note)
-        self.sessions.append(session)
+    def set_sessions(self, sessions):
+        self._sessions = list(sessions)
 
-        return session
+    def get_active_sessions(self):
+        active_sessions = []
 
-    #SESSION NUMBER
+        for session in self._sessions:
+            if not session.is_archived():
+                active_sessions.append(session)
+
+        return active_sessions
+
+    # SESSION NUMBER
     def get_next_session_number(self):
         highest_session_number = 0
 
-        for session in self.sessions:
+        for session in self._sessions:
             if session.get_session_number() > highest_session_number:
                 highest_session_number = session.get_session_number()
 
         return highest_session_number + 1
 
-    def get_sessions(self):
-        return self.sessions
+    # CREATE
+    def add_session(self, note):
+        session_number = self.get_next_session_number()
+        today = date.today().isoformat()
 
-    #FIND SESSION
+        session = CodingSession(session_number, today, note)
+        self._sessions.append(session)
+
+        return session
+
+    # SEARCH
     def get_session_by_number(self, session_number):
-        for session in self.sessions:
+        for session in self._sessions:
             if (
                 session.get_session_number() == session_number
                 and not session.is_archived()
@@ -45,7 +59,7 @@ class SessionTracker:
     def get_sessions_by_date(self, target_date):
         matching_sessions = []
 
-        for session in self.sessions:
+        for session in self._sessions:
             if session.is_archived():
                 continue
 
@@ -61,7 +75,7 @@ class SessionTracker:
         if not cleaned_keyword:
             return []
 
-        for session in self.sessions:
+        for session in self._sessions:
             if session.is_archived():
                 continue
 
@@ -72,7 +86,7 @@ class SessionTracker:
 
         return matching_sessions
 
-    #UPDATE SESSION
+    # UPDATE
     def update_session_note(self, session_number, new_note):
         session = self.get_session_by_number(session_number)
 
@@ -83,11 +97,7 @@ class SessionTracker:
 
         return session
 
-    #JSON
-    def set_sessions(self, sessions):
-        self.sessions = sessions
-
-    #ARCHIVE
+    # ARCHIVE
     def archive_session(self, session_number):
         session = self.get_session_by_number(session_number)
 
@@ -97,12 +107,3 @@ class SessionTracker:
         session.archive()
 
         return session
-
-    def get_active_sessions(self):
-        active_sessions = []
-
-        for session in self.sessions:
-            if not session.is_archived():
-                active_sessions.append(session)
-
-        return active_sessions

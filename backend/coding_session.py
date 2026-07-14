@@ -4,23 +4,33 @@ class EmptyNoteError(ValueError):
     def __init__(self):
         super().__init__("Please enter a session note")
 
+
 class InvalidDateError(ValueError):
     def __init__(self):
         super().__init__("Please enter a valid date in YYYY-MM-DD format")
+
 
 class FutureDateError(ValueError):
     def __init__(self):
         super().__init__("Please enter today's date or an earlier date")
 
+
 class CodingSession:
 
+    # INITIALIZATION
     def __init__(self, session_number, date, note, is_archived=False):
-        self.session_number = session_number
-        self.date = self._clean_date(date)
-        self.note = self._clean_note(note)
+        self._session_number = session_number
+        self._date = self._clean_date(date)
+        self._note = self._clean_note(note)
         self._is_archived = is_archived
 
-    #Note
+    # NOTE
+    def get_note(self):
+        return self._note
+
+    def update_note(self, new_note):
+        self._note = self._clean_note(new_note)
+
     def _clean_note(self, note):
         if note is None:
             raise EmptyNoteError()
@@ -32,46 +42,14 @@ class CodingSession:
 
         return cleaned_note
 
-    def get_note(self):
-        return self.note
-
-    def update_note(self, new_note):
-        self.note = self._clean_note(new_note)
-
-    #Session Number
+    # SESSION NUMBER
     def get_session_number(self):
-        return self.session_number
+        return self._session_number
 
-    #Date
+    # DATE
     def get_date(self):
-        return self.date
+        return self._date
 
-    #JSON
-    def to_dict(self):
-        return {
-            "session_number": self.session_number,
-            "date": self.date,
-            "note": self.note,
-            "is_archived": self._is_archived
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
-            data["session_number"],
-            data["date"],
-            data["note"],
-            data.get("is_archived", False)
-        )
-
-    #ARCHIVE
-    def archive(self):
-        self._is_archived = True
-
-    def is_archived(self):
-        return self._is_archived
-
-    #DATA VALIDATION
     @staticmethod
     def _clean_date(date_value):
         if not isinstance(date_value, str):
@@ -91,3 +69,28 @@ class CodingSession:
             raise FutureDateError()
 
         return cleaned_date
+
+    # ARCHIVE
+    def archive(self):
+        self._is_archived = True
+
+    def is_archived(self):
+        return self._is_archived
+
+    # SERIALIZATION
+    def to_dict(self):
+        return {
+            "session_number": self._session_number,
+            "date": self._date,
+            "note": self._note,
+            "is_archived": self._is_archived
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            data["session_number"],
+            data["date"],
+            data["note"],
+            data.get("is_archived", False)
+        )

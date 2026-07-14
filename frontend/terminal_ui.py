@@ -6,12 +6,15 @@ from backend.coding_session import (
 )
 from backend.session_tracker import SessionTracker
 
+
 class TerminalUI:
 
+    # INITIALIZATION
     def __init__(self, session_tracker: SessionTracker, storage):
-        self.session_tracker = session_tracker
-        self.storage = storage
+        self._session_tracker = session_tracker
+        self._storage = storage
 
+    # MAIN MENU
     def run(self):
         print("1 - Add session")
         print("2 - Search sessions")
@@ -31,21 +34,21 @@ class TerminalUI:
         else:
             print("Invalid option")
 
-    #ADD SESSION
+    # ADD SESSION
     def _add_session(self):
         note = input("Session note: ")
 
         try:
-            session = self.session_tracker.add_session(note)
-            self.storage.save_sessions(
-                self.session_tracker.get_sessions()
+            session = self._session_tracker.add_session(note)
+            self._storage.save_sessions(
+                self._session_tracker.get_sessions()
             )
             self.show_saved_session(session)
 
         except EmptyNoteError:
             print("Please enter a session note")
 
-    #MENU
+    # SEARCH MENU
     def search_menu(self):
         print("1 - Search by number")
         print("2 - Search by note")
@@ -79,9 +82,9 @@ class TerminalUI:
         else:
             print("Invalid option")
 
-    #SEARCH
+    # SEARCH
     def search_session_by_number(self, number):
-        session = self.session_tracker.get_session_by_number(number)
+        session = self._session_tracker.get_session_by_number(number)
 
         if session is None:
             print("Session not found")
@@ -90,14 +93,61 @@ class TerminalUI:
         self.show_session(session)
 
     def search_sessions_by_note(self, keyword):
-        sessions = self.session_tracker.get_sessions_by_note(keyword)
+        sessions = self._session_tracker.get_sessions_by_note(keyword)
         self.show_sessions(sessions)
 
     def search_sessions_by_date(self, target_date):
-        sessions = self.session_tracker.get_sessions_by_date(target_date)
+        sessions = self._session_tracker.get_sessions_by_date(target_date)
         self.show_sessions(sessions)
 
-    #SHOW
+    # UPDATE
+    def handle_update_session(self):
+        session = self._prompt_for_session()
+
+        if session is None:
+            return
+
+        new_note = input("Enter new note: ")
+
+        try:
+            updated_session = self._session_tracker.update_session_note(
+                session.get_session_number(),
+                new_note
+            )
+        except EmptyNoteError:
+            print("Please enter a session note")
+            return
+
+        self._save_sessions()
+
+        print("Session updated")
+        self.show_session(updated_session)
+
+    # ARCHIVE
+    def handle_archive_session(self):
+        session = self._prompt_for_session()
+
+        if session is None:
+            return
+
+        confirmation = input(
+            "Archive this session? (y/n): "
+        ).strip().lower()
+
+        if confirmation != "y":
+            print("Archive cancelled")
+            return
+
+        archived_session = self._session_tracker.archive_session(
+            session.get_session_number()
+        )
+
+        self._save_sessions()
+
+        print("Session archived")
+        self.show_session(archived_session)
+
+    # DISPLAY
     def show_sessions(self, sessions):
         if not sessions:
             print("No sessions found")
@@ -118,53 +168,7 @@ class TerminalUI:
         print(f"Date: {session.get_date()}")
         print(f"Note: {session.get_note()}")
 
-    #UPDATE
-    def handle_update_session(self):
-        session = self._prompt_for_session()
-
-        if session is None:
-            return
-
-        new_note = input("Enter new note: ")
-
-        try:
-            updated_session = self.session_tracker.update_session_note(
-                session.get_session_number(),
-                new_note
-            )
-        except EmptyNoteError:
-            print("Please enter a session note")
-            return
-
-        self._save_sessions()
-
-        print("Session updated")
-        self.show_session(updated_session)
-
-    def handle_archive_session(self):
-        session = self._prompt_for_session()
-
-        if session is None:
-            return
-
-        confirmation = input(
-            "Archive this session? (y/n): "
-        ).strip().lower()
-
-        if confirmation != "y":
-            print("Archive cancelled")
-            return
-
-        archived_session = self.session_tracker.archive_session(
-            session.get_session_number()
-        )
-
-        self._save_sessions()
-
-        print("Session archived")
-        self.show_session(archived_session)
-
-    #REFACTOR
+    # HELPERS
     def _prompt_for_session(self):
         try:
             session_number = int(input("Enter session number: "))
@@ -172,7 +176,7 @@ class TerminalUI:
             print("Invalid session number")
             return None
 
-        session = self.session_tracker.get_session_by_number(session_number)
+        session = self._session_tracker.get_session_by_number(session_number)
 
         if session is None:
             print("Session not found")
@@ -183,6 +187,6 @@ class TerminalUI:
         return session
 
     def _save_sessions(self):
-        self.storage.save_sessions(
-            self.session_tracker.get_sessions()
+        self._storage.save_sessions(
+            self._session_tracker.get_sessions()
         )
